@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36429.23
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "MMAudioFeatures", "MMAudioFeatures\MMAudioFeatures.esproj", "{B6653670-937A-FD82-8420-66A1C2390AED}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Projektmappenelemente", "Projektmappenelemente", "{84D27F74-D2BA-6C25-2661-968F101900D9}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE.md = LICENSE.md
+		package.json = package.json
+		README.md = README.md
+		.github\release.yaml = .github\release.yaml
+		.github\test.yaml = .github\test.yaml
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B6653670-937A-FD82-8420-66A1C2390AED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B6653670-937A-FD82-8420-66A1C2390AED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B6653670-937A-FD82-8420-66A1C2390AED}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{B6653670-937A-FD82-8420-66A1C2390AED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B6653670-937A-FD82-8420-66A1C2390AED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B6653670-937A-FD82-8420-66A1C2390AED}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C1460176-9F42-4026-AD84-CC9ECD9F560F}
+	EndGlobalSection
+EndGlobal

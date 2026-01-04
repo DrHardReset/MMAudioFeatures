@@ -1,0 +1,27 @@
+<div class="uiRows">
+    <div data-tip="Specify spotify credentials">
+        <div data-id="txtSpotifyClient" data-control-class="Edit">Spotify Client-ID</div>
+    </div>
+
+    <div data-tip="Specify spotify credentials">
+        <div data-id="txtSpotifySecret" data-control-class="Edit">Spotify Secret</div>
+    </div>
+
+    <p />
+    <div><strong>Audio features to save to ID3 tags:</strong></div>
+
+    <div style="display: flex; flex-direction: column; margin-left: 20px;">
+        <div data-id="chkSaveBPM" data-control-class="Checkbox" data-tip="Save tempo to BPM field" style="margin: 2px 0;">BPM (Tempo)</div>
+        <div data-id="chkSaveInitialKey" data-control-class="Checkbox" data-tip="Save musical key to Key field" style="margin: 2px 0;">Key</div>
+        <div data-id="chkSaveDanceability" data-control-class="Checkbox" data-tip="Save danceability to Custom1 field" style="margin: 2px 0;">Custom1: Danceability</div>
+        <div data-id="chkSaveEnergy" data-control-class="Checkbox" data-tip="Save energy to Custom2 field" style="margin: 2px 0;">Custom2: Energy</div>
+        <div data-id="chkSaveValence" data-control-class="Checkbox" data-tip="Save positivity to Custom3 field" style="margin: 2px 0;">Custom3: Positivity (Valence)</div>
+        <div data-id="chkSaveAcousticness" data-control-class="Checkbox" data-tip="Save acousticness to Custom4 field" style="margin: 2px 0;">Custom4: Acousticness</div>
+        <div data-id="chkSaveInstrumentalness" data-control-class="Checkbox" data-tip="Save instrumentalness to Custom5 field" style="margin: 2px 0;">Custom5: Instrumentalness</div>
+    </div>
+
+    <p />
+    <div style="margin-bottom: 5px;"><em>Note: The comment field will contain a description explaining which custom fields contain which audio features.</em></div>
+
+    <div data-id="chkSaveComment" data-control-class="Checkbox" data-tip="Add audio features description to comment field">Comment (Description)</div>
+</div>

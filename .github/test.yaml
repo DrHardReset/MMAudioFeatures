@@ -1,0 +1,37 @@
+# Continuous Integration - runs on every push/PR
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Run tests on Ubuntu (faster setup than Windows)
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: MMAudioFeatures/package.json
+        
+    - name: Install dependencies
+      working-directory: MMAudioFeatures
+      run: npm ci
+      
+    - name: Run all tests
+      working-directory: MMAudioFeatures
+      run: |
+        echo "Running unit tests..."
+        npm test

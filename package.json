@@ -1,0 +1,8 @@
+{
+  "name": "mm-audio-features-solution",
+  "private": true,
+  "scripts": {
+    "test": "cd MMAudioFeatures && npm test",
+    "test:integration": "cd MMAudioFeatures && npx jest --testPathPatterns=integration.test.js"
+  }
+}

@@ -1,0 +1,91 @@
+﻿# GitHub Actions CI/CD Pipeline for MM Audio Features
+# Triggers on new tag push and creates a release artifact
+
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '18'
+  BUILD_CONFIGURATION: Release
+
+jobs:
+  release:
+    name: Test, Build & Release
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Get version from tag
+      id: get_version
+      run: |
+        $version = "${{ github.ref_name }}" -replace '^v', ''
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+        echo "Version: $version"
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: MMAudioFeatures/package.json
+        
+    - name: Install dependencies
+      working-directory: MMAudioFeatures
+      run: npm ci
+      
+    - name: Run tests
+      working-directory: MMAudioFeatures
+      run: |
+        Write-Host "Running unit tests..."
+        npm test
+      
+    - name: Build Release
+      id: build
+      working-directory: MMAudioFeatures
+      run: |
+        Write-Host "Building MM Audio Features addon for release..."
+        Write-Host "Tag version: ${{ github.ref_name }}"
+        
+        dotnet build MMAudioFeatures.esproj --configuration ${{ env.BUILD_CONFIGURATION }} --verbosity minimal
+        
+        $mmipFiles = Get-ChildItem "bin/*.mmip"
+        if ($mmipFiles.Count -eq 0) {
+            throw "MMIP file not found in bin folder"
+        }
+        
+        $mmipFile = $mmipFiles[0]
+        Write-Host "Created artifact: $($mmipFile.Name) ($([math]::Round($mmipFile.Length / 1KB, 2)) KB)"
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: "MM Audio Features ${{ github.ref_name }}"
+        body: |
+          ## MM Audio Features ${{ github.ref_name }}
+          
+          ### 📦 Installation
+          1. Download the `.mmip` file below
+          2. Double-click to install in MediaMonkey
+          3. Configure your Spotify API credentials
+
+        files: MMAudioFeatures/bin/*.mmip
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

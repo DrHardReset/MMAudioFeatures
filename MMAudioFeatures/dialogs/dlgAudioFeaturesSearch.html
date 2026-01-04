@@ -1,0 +1,28 @@
+<html class="dialog">
+<head>
+    <title>Audio Features Search</title>
+    <script src="file:///mminit.js"></script>
+    <script src="dlgAudioFeaturesSearch.js"></script>
+</head>
+<body data-posSaveName="dlgAudioFeaturesSearch" data-defaultSize="900,700">
+    <div class="padding fill flex column">
+        <div class="fill flex column hSeparatorTiny">
+            <div data-id="tracksArea" class="fill scrollable" style="flex: 1; overflow-y: auto; min-height: 0;">
+                <div data-id="tracksContent"></div>
+            </div>
+
+            <div data-id="summaryArea" style="flex: 0 0 auto; margin-top: 10px;">
+                <div data-id="summaryContent"></div>
+            </div>
+        </div>
+
+        <div data-control-class="Buttons">
+            <div data-id="btnSave" data-position="opposite">Save Audio Features to ID3 Tags</div>
+            <!--predefined data-id "btnClose"" automatically closes the dialog on click-->
+            <div data-id="btnClose">Close</div>
+        </div>
+
+        <label data-id="statusBar" class="statusbar">Ready</label>
+    </div>
+</body>
+</html>

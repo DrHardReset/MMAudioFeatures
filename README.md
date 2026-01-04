@@ -102,13 +102,13 @@ The addon maps audio features to MediaMonkey fields as follows:
 - **Instrumentalness** → `Track.Custom5`
 
 When enabled, the comment field includes a mapping reference:
-##############################
-AudioFeatures:
-• Custom1: Danceability
-• Custom2: Energy
-• Custom3: Valence
-• Custom4: Acousticness
-• Custom5: Instrumentalness
+##############################\
+AudioFeatures:\
+• Custom1: Danceability\
+• Custom2: Energy\
+• Custom3: Valence\
+• Custom4: Acousticness\
+• Custom5: Instrumentalness\
 ##############################
 
 ## ⚖️ Legal Disclaimer & Third-Party Services
@@ -153,7 +153,8 @@ This software is provided "AS IS" without warranty of any kind. The author assum
 ## 🏗️ Development
 
 ### Building from Source
-- Debug build: copies addon data to portable MediaMonkey Scripts folder (C:\MediaMonkey\Portable\Scripts\MMAudioFeatures)
+- Debug build: copies addon data to portable MediaMonkey Scripts folder
+	(C:\MediaMonkey\Portable\Scripts\MMAudioFeatures)
 - Release build: creates .mmip package in bin folder
 
 ### Running Tests

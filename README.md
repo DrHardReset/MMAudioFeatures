@@ -1,5 +1,7 @@
 # MM Audio Features
 
+![MM Audio Features Icon](https://raw.githubusercontent.com/DrHardReset/MMAudioFeatures/main/MMAudioFeatures/icon.svg)
+
 This MediaMonkey addon enhances your music collection by automatically fetching and storing detailed audio features for your tracks. Using Spotify's comprehensive music database for track identification and ReccoBeats' audio feature database, this addon enriches your metadata with professional audio characteristics.
 
 ![Version](https://img.shields.io/badge/dynamic/json?color=blue&label=version&query=version&url=https%3A//raw.githubusercontent.com/DrHardReset/MMAudioFeatures/main/MMAudioFeatures/info.json)

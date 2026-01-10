@@ -76,7 +76,7 @@ This MediaMonkey addon enhances your music collection by automatically fetching 
 4. Review the found audio features in the dialog
 5. Click **Save** to apply the changes to your tracks
 
-![Audio Features Search Results](MMAudioFeatures/images/Screenshot.png)
+![Audio Features Search Results](MMAudioFeatures/images/screenshot.png)
 *The search results dialog showing audio features, album covers, and summary information for selected tracks*
 
 ### Configuration Options

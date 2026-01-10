@@ -12,7 +12,7 @@ function initClients() {
     if (window.SpotifyClient && dialogConfig.spotifyClient && dialogConfig.spotifySecret) {
         spotifyClient = new window.SpotifyClient(dialogConfig.spotifyClient, dialogConfig.spotifySecret);
     } else {
-        alert('Spotify client not available. Please check configuration.');
+        uitools.toastMessage.show('Spotify client not available. Please check configuration.');
         return false;
     }
 
@@ -20,7 +20,7 @@ function initClients() {
     if (window.ReccoBeatsClient) {
         reccoBeatsClient = new window.ReccoBeatsClient();
     } else {
-        alert('ReccoBeats client not available. Please check if the library is loaded correctly.');
+        uitools.toastMessage.show('ReccoBeats client not available. Please check if the library is loaded correctly.');
         return false;
     }
 
@@ -133,7 +133,8 @@ async function processTracksInDialog() {
         if (UI.statusBar) {
             UI.statusBar.innerHTML = 'Processing failed: ' + error.message;
         }
-        alert('Processing failed: ' + error.message);
+
+        uitools.toastMessage.show('Processing failed: ' + error.message);
     }
 }
 
@@ -141,12 +142,12 @@ async function saveAudioFeatures() {
     const selectedTracks = getSelectedTracksForSaving();
 
     if (!originalTracklist || selectedTracks.length === 0) {
-        alert('No tracks selected for saving. Please select tracks with audio features.');
+        uitools.toastMessage.show('No tracks selected for saving. Please select tracks with audio features.');
         return;
     }
 
     if (!dialogConfig) {
-        alert('Configuration not available.');
+        uitools.toastMessage.show('Configuration not available.');
         return;
     }
 
@@ -624,7 +625,6 @@ function init(params) {
 
         // Initialize clients and check if successful
         if (!initClients()) {
-            // Client initialization failed, alert was already shown
             return;
         }
     } else {

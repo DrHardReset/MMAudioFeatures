@@ -38,7 +38,8 @@ jobs:
         $expectedVersion = "${{ steps.get_version.outputs.version }}"
 
         $content = Get-Content "MMAudioFeatures/info.json" -Raw
-        $content = $content -replace '"version": "[^"]*"', '"version": "' + $expectedVersion + '"'
+        $newVersionString = '"version": "' + $expectedVersion + '"'
+        $content = $content -replace '"version": "[^"]*"', $newVersionString
         Set-Content "MMAudioFeatures/info.json" -Value $content
 
         Write-Host "Updated info.json:"

@@ -1,87 +1,72 @@
 ﻿<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.2752196">
-	<PropertyGroup>
-		<JavaScriptTestRoot>tests\</JavaScriptTestRoot>
-		<JavaScriptTestFramework>Jest</JavaScriptTestFramework>
-	</PropertyGroup>
+  <PropertyGroup>
+    <JavaScriptTestRoot>tests\</JavaScriptTestRoot>
+    <JavaScriptTestFramework>Jest</JavaScriptTestFramework>
+  </PropertyGroup>
 
-	<!-- Hide bin folder from Solution Explorer -->
-	<ItemGroup>
-		<None Remove="bin\**" />
-	</ItemGroup>
+  <!-- Hide bin folder from Solution Explorer -->
+  <ItemGroup>
+    <None Remove="bin\**" />
+  </ItemGroup>
 
-	<!-- Define addon files centrally -->
-	<ItemGroup>
-		<AddonFiles Include="..\LICENSE.md" />
-		<AddonFiles Include="info.json" />
-		<AddonFiles Include="config.js" />
-		<AddonFiles Include="config.html" />
-		<AddonFiles Include="actions_add.js" />
-		<AddonFiles Include="icon.svg" />
-		<AddonFolders Include="lib" />
-		<AddonFolders Include="dialogs" />
-	</ItemGroup>
+  <!-- Define addon files centrally -->
+  <ItemGroup>
+    <AddonFiles Include="..\LICENSE.md" />
+    <AddonFiles Include="info.json" />
+    <AddonFiles Include="config.js" />
+    <AddonFiles Include="config.html" />
+    <AddonFiles Include="actions_add.js" />
+    <AddonFiles Include="images\icon.svg" />
+    <AddonFolders Include="lib" />
+    <AddonFolders Include="dialogs" />
+  </ItemGroup>
 
-	<Target Name="PackAddon" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-		<PropertyGroup>
-			<BinDirectory>$(MSBuildProjectDirectory)\bin</BinDirectory>
-			<AddonPackageName>$(BinDirectory)\$(MSBuildProjectName).mmip</AddonPackageName>
-			<TempDirectory>$(BinDirectory)\temp</TempDirectory>
-		</PropertyGroup>
+  <!-- Target to create addon ZIP package for Release builds -->
+  <Target Name="PackAddon" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <BinDirectory>$(MSBuildProjectDirectory)\bin</BinDirectory>
+      <AddonPackageName>$(BinDirectory)\$(MSBuildProjectName).mmip</AddonPackageName>
+      <TempDirectory>$(BinDirectory)\temp</TempDirectory>
+    </PropertyGroup>
+    <!-- Clear bin directory if it exists -->
+    <RemoveDir Directories="$(BinDirectory)" Condition="Exists('$(BinDirectory)')" />
+    <!-- Create directories -->
+    <MakeDir Directories="$(BinDirectory)" />
+    <MakeDir Directories="$(TempDirectory)" />
+    <!-- Copy files to temp directory first -->
+    <Copy SourceFiles="@(AddonFiles->'$(MSBuildProjectDirectory)\%(Identity)')" DestinationFolder="$(TempDirectory)" />
+    <!-- Copy folders to temp directory -->
+    <MSBuild Projects="$(MSBuildThisFileFullPath)" Targets="CopyFolder" Properties="SourceFolder=%(AddonFolders.Identity);DestinationFolder=$(TempDirectory)\%(AddonFolders.Identity)" />
+    <!-- Create ZIP from temp directory -->
+    <Exec Command="powershell -Command &quot;Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory('$(TempDirectory)', '$(AddonPackageName)', 'Optimal', $false)&quot;" />
+    <!-- Clean up temp directory -->
+    <RemoveDir Directories="$(TempDirectory)" />
+    <Message Text="Addon-ZIP created: $(AddonPackageName)" Importance="high" />
+  </Target>
 
-		<!-- Clear bin directory if it exists -->
-		<RemoveDir Directories="$(BinDirectory)" Condition="Exists('$(BinDirectory)')" />
-		<!-- Create directories -->
-		<MakeDir Directories="$(BinDirectory)" />
-		<MakeDir Directories="$(TempDirectory)" />
+  <!-- Target to copy addon files to MediaMonkey Scripts folder for Debug builds -->
+  <Target Name="CopyAddonFiles" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <PropertyGroup>
+      <MediaMonkeyScriptsPath>C:\MediaMonkey\Portable\Scripts</MediaMonkeyScriptsPath>
+      <ProjectScriptsPath>$(MediaMonkeyScriptsPath)\$(MSBuildProjectName)</ProjectScriptsPath>
+    </PropertyGroup>
+    <!-- Clear target project directory if it exists -->
+    <RemoveDir Directories="$(ProjectScriptsPath)" Condition="Exists('$(ProjectScriptsPath)')" />
+    <!-- Create target directories -->
+    <MakeDir Directories="$(MediaMonkeyScriptsPath)" Condition="!Exists('$(MediaMonkeyScriptsPath)')" />
+    <MakeDir Directories="$(ProjectScriptsPath)" />
+    <!-- Copy individual addon files -->
+    <Copy SourceFiles="@(AddonFiles->'$(MSBuildProjectDirectory)\%(Identity)')" DestinationFolder="$(ProjectScriptsPath)" />
+    <!-- Copy all addon folders using MSBuild task -->
+    <MSBuild Projects="$(MSBuildThisFileFullPath)" Targets="CopyFolder" Properties="SourceFolder=%(AddonFolders.Identity);DestinationFolder=$(ProjectScriptsPath)\%(AddonFolders.Identity)" />
+    <Message Text="Addon files copied to: $(ProjectScriptsPath)" Importance="high" />
+  </Target>
 
-		<!-- Copy files to temp directory first -->
-		<Copy SourceFiles="@(AddonFiles->'$(MSBuildProjectDirectory)\%(Identity)')" DestinationFolder="$(TempDirectory)" />
-
-		<!-- Copy folders to temp directory -->
-		<MSBuild Projects="$(MSBuildThisFileFullPath)"
-				 Targets="CopyFolder"
-				 Properties="SourceFolder=%(AddonFolders.Identity);DestinationFolder=$(TempDirectory)\%(AddonFolders.Identity)" />
-
-		<!-- Create ZIP from temp directory -->
-		<Exec Command="powershell -Command &quot;Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory('$(TempDirectory)', '$(AddonPackageName)', 'Optimal', $false)&quot;" />
-
-		<!-- Clean up temp directory -->
-		<RemoveDir Directories="$(TempDirectory)" />
-
-		<Message Text="Addon-ZIP created: $(AddonPackageName)" Importance="high" />
-	</Target>
-
-	<Target Name="CopyAddonFiles" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-		<PropertyGroup>
-			<MediaMonkeyScriptsPath>C:\MediaMonkey\Portable\Scripts</MediaMonkeyScriptsPath>
-			<ProjectScriptsPath>$(MediaMonkeyScriptsPath)\$(MSBuildProjectName)</ProjectScriptsPath>
-		</PropertyGroup>
-
-		<!-- Clear target project directory if it exists -->
-		<RemoveDir Directories="$(ProjectScriptsPath)" Condition="Exists('$(ProjectScriptsPath)')" />
-
-		<!-- Create target directories -->
-		<MakeDir Directories="$(MediaMonkeyScriptsPath)" Condition="!Exists('$(MediaMonkeyScriptsPath)')" />
-		<MakeDir Directories="$(ProjectScriptsPath)" />
-
-		<!-- Copy individual addon files -->
-		<Copy SourceFiles="@(AddonFiles->'$(MSBuildProjectDirectory)\%(Identity)')" DestinationFolder="$(ProjectScriptsPath)" />
-
-		<!-- Copy all addon folders using MSBuild task -->
-		<MSBuild Projects="$(MSBuildThisFileFullPath)"
-				 Targets="CopyFolder"
-				 Properties="SourceFolder=%(AddonFolders.Identity);DestinationFolder=$(ProjectScriptsPath)\%(AddonFolders.Identity)" />
-
-		<Message Text="Addon files copied to: $(ProjectScriptsPath)" Importance="high" />
-	</Target>
-
-	<!-- Helper target to copy a single folder -->
-	<Target Name="CopyFolder">
-		<ItemGroup>
-			<FolderFiles Include="$(MSBuildProjectDirectory)\$(SourceFolder)\**\*" />
-		</ItemGroup>
-		<Copy SourceFiles="@(FolderFiles)"
-			  DestinationFiles="@(FolderFiles->'$(DestinationFolder)\%(RecursiveDir)%(Filename)%(Extension)')"
-			  SkipUnchangedFiles="true" />
-	</Target>
+  <!-- Helper target to copy a single folder -->
+  <Target Name="CopyFolder">
+    <ItemGroup>
+      <FolderFiles Include="$(MSBuildProjectDirectory)\$(SourceFolder)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FolderFiles)" DestinationFiles="@(FolderFiles->'$(DestinationFolder)\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

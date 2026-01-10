@@ -124,6 +124,6 @@
         });
 
         // Keyboard hotkey/shortcut
-        hotkeys.addHotkey('Ctrl+Shift+A', 'searchAudioFeatures');
+        hotkeys.addHotkey('Ctrl+Shift+A', searchAudioFeatures.name);
     });
 })();

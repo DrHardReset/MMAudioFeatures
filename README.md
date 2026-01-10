@@ -1,6 +1,6 @@
 # MM Audio Features
 
-![MM Audio Features Icon](https://raw.githubusercontent.com/DrHardReset/MMAudioFeatures/main/MMAudioFeatures/icon.svg)
+![MM Audio Features Icon](MMAudioFeatures/images/icon.svg)
 
 This MediaMonkey addon enhances your music collection by automatically fetching and storing detailed audio features for your tracks. Using Spotify's comprehensive music database for track identification and ReccoBeats' audio feature database, this addon enriches your metadata with professional audio characteristics.
 
@@ -75,6 +75,9 @@ This MediaMonkey addon enhances your music collection by automatically fetching 
 3. Or use keyboard shortcut `Ctrl+Shift+A`
 4. Review the found audio features in the dialog
 5. Click **Save** to apply the changes to your tracks
+
+![Audio Features Search Results](MMAudioFeatures/images/Screenshot.png)
+*The search results dialog showing audio features, album covers, and summary information for selected tracks*
 
 ### Configuration Options
 

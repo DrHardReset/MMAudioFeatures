@@ -31,7 +31,36 @@ jobs:
         $version = "${{ github.ref_name }}" -replace '^v', ''
         echo "version=$version" >> $env:GITHUB_OUTPUT
         echo "Version: $version"
-      
+
+    - name: Update version in info.json
+      run: |
+        # Update version in info.json
+        $expectedVersion = "${{ steps.get_version.outputs.version }}"
+
+        $content = Get-Content "MMAudioFeatures/info.json" -Raw
+        $content = $content -replace '"version": "[^"]*"', '"version": "${{ expectedVersion }}"'
+        Set-Content "MMAudioFeatures/info.json" -Value $content
+
+        Write-Host "Updated info.json:"
+        Get-Content "MMAudioFeatures/info.json"
+
+        # Verify the version was updated correctly
+        Write-Host ""
+        Write-Host "=== VERSION VERIFICATION ==="
+        $jsonContent = Get-Content "MMAudioFeatures/info.json" | ConvertFrom-Json
+        $actualVersion = $jsonContent.version
+
+        Write-Host "Expected version: $expectedVersion"
+        Write-Host "Actual version:   $actualVersion"
+
+        if ($actualVersion -eq $expectedVersion) {
+            Write-Host "Version verification PASSED"
+        } else {
+            Write-Host "Version verification FAILED"
+            Write-Host "Expected '$expectedVersion' but found '$actualVersion' in info.json"
+            exit 1
+        }
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -70,22 +99,38 @@ jobs:
         
         $mmipFile = $mmipFiles[0]
         Write-Host "Created artifact: $($mmipFile.Name) ($([math]::Round($mmipFile.Length / 1KB, 2)) KB)"
-        
+
+    - name: Generate update info JSON
+      run: |
+        $updateInfo = @{
+            version = "${{ steps.get_version.outputs.version }}"
+            minAppVersion = "5.0.0"
+            updateUrl = "https://github.com/${{ github.repository }}/releases/latest/download/MMAudioFeatures.mmip"
+        }
+
+        $updateInfo | ConvertTo-Json | Set-Content "update.json"
+
+        Write-Host "Generated update.json:"
+        Get-Content "update.json"
+
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
-        name: "MM Audio Features ${{ github.ref_name }}"
-        body: |
-          ## MM Audio Features ${{ github.ref_name }}
-          
-          ### 📦 Installation
-          1. Download the `.mmip` file below
-          2. Double-click to install in MediaMonkey
-          3. Configure your Spotify API credentials
-
-        files: MMAudioFeatures/bin/*.mmip
+        name: "${{ github.ref_name }}"
+        make_latest: true
         draft: false
         prerelease: false
         generate_release_notes: true
+        files: |
+          MMAudioFeatures/bin/MMAudioFeatures.mmip
+          update.json
+        fail_on_unmatched_files: true
+        body: |
+          ## MM Audio Features ${{ github.ref_name }}
+          
+          ### Installation
+          1. Download the `.mmip` file below
+          2. Double-click to install in MediaMonkey
+          3. Configure your Spotify API credentials
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

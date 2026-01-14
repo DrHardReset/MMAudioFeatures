@@ -1,3 +1,18 @@
+## ⚠️ **IMPORTANT NOTICE - Spotify API Limitation**
+
+> **🚨 NEW APP CREATION TEMPORARILY DISABLED**
+> 
+> **Spotify has temporarily disabled the creation of new apps in their Developer Dashboard.** If you don't already have a Spotify Developer App set up, you won't be able to use this addon right now.
+> 
+> **Before installing this addon, please check:**
+> - Do you already have Spotify API credentials (Client ID & Secret)?
+> - If NO: **Wait** until Spotify re-enables new app creation
+> - If YES: You can proceed with the installation
+> 
+> **Status Updates:** Check the [Spotify Community Discussion](https://community.spotify.com/t5/Spotify-for-Developers/Unable-to-create-app/td-p/7283365) for the latest information about when new app creation will be restored.
+> 
+> I apologize for this inconvenience - this is a temporary limitation from Spotify's side and beyond me control.
+
 # MM Audio Features
 
 ![MM Audio Features Icon](MMAudioFeatures/images/icon.svg)

@@ -17,23 +17,137 @@ describe('ReccoBeats API Integration Test', () => {
         console.log('Base URL:', reccoBeatsClient.baseUrl);
     });
 
-    test('searchArtist finds "The Weekend" with correct Spotify ID', async () => {
-        // ReccoBeats search result is not sorted by relevance, so we get the first result that matches the band name, but is not what we are searching for.
-        const artistName = 'The Weekend';
-        const expectedSpotifyUrl = 'https://open.spotify.com/intl-de/artist/1Xyo4u8uXC1ZmMpatF05PJ';
+    test('searchArtist finds "Headhunterz" with correct Spotify ID', async () => {
+        const artistName = 'Headhunterz';
+        const expectedReccoBeatsId = '167eef6a-383b-4817-907d-68dfce387ea3';
+        const expectedSpotifyUrl = 'https://open.spotify.com/artist/6C0KWmCdqrLU2LzzWBPbOy';
 
-        const result = await reccoBeatsClient.searchArtist(artistName);
+        // Test with exactMatch=true to get the specific artist
+        const exactResult = await reccoBeatsClient.searchArtist(artistName, true);
 
-        expect(result).not.toBeNull();
-        expect(result.name).toBe(artistName);
+        expect(Array.isArray(exactResult)).toBe(true);
+        expect(exactResult.length).toBeGreaterThan(0);
 
-        // Validate Spotify URL in href field
-        expect(result.href).toBe(expectedSpotifyUrl);
-        console.log(`✅ Found correct Spotify URL: ${result.href}`);
+        // Find the expected artist in the results
+        const foundArtist = exactResult.find(a => a.id === expectedReccoBeatsId);
+        expect(foundArtist).toBeDefined();
+        expect(foundArtist.name).toBe(artistName);
+        expect(foundArtist.href).toBe(expectedSpotifyUrl);
+        console.log(`✅ Found correct Spotify URL: ${foundArtist.href}`);
+        console.log(`✅ Found ReccoBeats ID for artist '${artistName}': ${foundArtist.id}`);
 
-        console.log(`Found ReccoBeats ID for artist '${artistName}': ${result.id}`);
-        console.log('Full artist result:', result);
+        // Test without exactMatch to get all search results
+        const allResults = await reccoBeatsClient.searchArtist(artistName, false);
+        expect(Array.isArray(allResults)).toBe(true);
+        expect(allResults.length).toBeGreaterThanOrEqual(exactResult.length);
+        console.log(`Found ${allResults.length} total search results for '${artistName}'`);
+        console.log(`Found ${exactResult.length} exact matches for '${artistName}'`);
+
+        // Verify that exact matches are included in all results
+        const exactArtistInAllResults = allResults.find(a => a.id === expectedReccoBeatsId);
+        expect(exactArtistInAllResults).toBeDefined();
+
+        console.log('Full exact match result:', foundArtist);
     }, 15000);
+
+    test('searchArtistTrack finds "Orange Heart" by "Headhunterz"', async () => {
+        const artist = 'Headhunterz';
+        const trackName = 'Orange Heart';
+        const expectedReccoBeatsTrackId = 'eb5f88c9-107a-4839-a18e-aa068184beaa';
+        const expectedSpotifyTrackHref = 'https://open.spotify.com/track/01q0kDlM3acKwnmUW65IHN';
+
+        try {
+            const track = await reccoBeatsClient.searchArtistTrack(artist, trackName);
+
+            expect(track).not.toBeNull();
+            expect(track.trackTitle).toBe(trackName);
+            expect(track.href).toBe(expectedSpotifyTrackHref);
+            console.log(`Found correct Spotify track href: ${track.href}`);
+
+            expect(track.id).toBe(expectedReccoBeatsTrackId);
+            console.log(`Found correct ReccoBeats track ID for '${trackName}': ${track.id}`);
+            console.log('Full track result:', track);
+        } catch (error) {
+            console.error('searchArtistTrack test error:', error.message);
+            throw error;
+        }
+    }, 20000);
+
+    test('searchArtistTrack finds "Orange Heart" by "Headhunterz" with multi artist query', async () => {
+        const multiArtist = 'Headhunterz; Sian Evans';
+        const artist = 'Headhunterz';
+        const trackName = 'Orange Heart';
+        const expectedReccoBeatsTrackId = 'eb5f88c9-107a-4839-a18e-aa068184beaa';
+        const expectedSpotifyTrackHref = 'https://open.spotify.com/track/01q0kDlM3acKwnmUW65IHN';
+
+        try {
+            const track = await reccoBeatsClient.searchArtistTrack(multiArtist, trackName);
+
+            expect(track).not.toBeNull();
+            expect(track.trackTitle).toBe(trackName);
+
+            expect(track.artists).toBeDefined();
+            expect(track.artists.length).toBeGreaterThan(0);
+            expect(track.artists.some(trackArtist => trackArtist.name === artist)).toBe(true);
+
+            expect(track.href).toBe(expectedSpotifyTrackHref);
+            console.log(`Found correct Spotify track href: ${track.href}`);
+
+            expect(track.id).toBe(expectedReccoBeatsTrackId);
+            console.log(`Found correct ReccoBeats track ID for '${trackName}': ${track.id}`);
+            console.log('Full track result:', track);
+        } catch (error) {
+            console.error('searchArtistTrack test error:', error.message);
+            throw error;
+        }
+    }, 20000);
+
+    test('searchArtistAlbumTrack finds "Orange Heart" by "Headhunterz" on album "Orange Heart"', async () => {
+        const artistName = 'Headhunterz';
+        const albumName = 'Orange Heart';
+        const trackName = 'Orange Heart';
+        const expectedReccoBeatsTrackId = '73c6e0d8-e63f-4b9b-80aa-8aeab96021af';
+        const expectedSpotifyTrackHref = 'https://open.spotify.com/track/6Gf7assZMey5UGOhYTBaaU';
+
+        try {
+            const result = await reccoBeatsClient.searchArtistAlbumTrack(artistName, albumName, trackName);
+
+            expect(result).not.toBeNull();
+            expect(result.trackTitle).toBe(trackName);
+
+            // Validate artist information (using correct property names)
+            expect(result.artistInfo).toBeDefined();
+            expect(result.artistInfo.name).toBe(artistName);
+            expect(result.artistInfo.id).toBeDefined();
+            expect(typeof result.artistInfo.id).toBe('string');
+            console.log(`Found artist info - ID: ${result.artistInfo.id}, Name: ${result.artistInfo.name}`);
+
+            // Validate album information (using correct property names)
+            expect(result.albumInfo).toBeDefined();
+            expect(result.albumInfo.name).toBe(albumName);
+            expect(result.albumInfo.id).toBeDefined();
+            expect(typeof result.albumInfo.id).toBe('string');
+            console.log(`Found album info - ID: ${result.albumInfo.id}, Title: ${result.albumInfo.name}`);
+
+            // Validate Spotify URL and ReccoBeats ID
+            expect(result.href).toBe(expectedSpotifyTrackHref);
+            console.log(`✅ Found correct Spotify track URL: ${result.href}`);
+
+            expect(result.id).toBe(expectedReccoBeatsTrackId);
+            console.log(`✅ Found ReccoBeats track ID for '${trackName}': ${result.id}`);
+            console.log('Full searchArtistAlbumTrack result:', {
+                trackId: result.id,
+                trackTitle: result.trackTitle,
+                trackHref: result.href,
+                artistInfo: result.artistInfo,
+                albumInfo: result.albumInfo
+            });
+
+        } catch (error) {
+            console.error('searchArtistAlbumTrack test error:', error.message);
+            throw error;
+        }
+    }, 30000);
 
     describe('getAudioFeaturesByReccoOrSpotifyId - Single ID Tests', () => {
 
@@ -53,10 +167,10 @@ describe('ReccoBeats API Integration Test', () => {
                     expect(result).toBeDefined();
                     expect(typeof result).toBe('object');
 
-                    // Check expected audio feature fields
+                    // Check expected audio feature fields (updated for correct API spec)
                     const expectedFeatures = [
                         'acousticness', 'danceability', 'energy', 'instrumentalness',
-                        'liveness', 'loudness', 'speechiness', 'tempo', 'valence'
+                        'liveness', 'loudness', 'speechiness', 'tempo', 'valence', 'key', 'mode'
                     ];
 
                     let foundFeatures = 0;
@@ -77,6 +191,9 @@ describe('ReccoBeats API Integration Test', () => {
                             } else if (feature === 'loudness') {
                                 expect(typeof result[feature]).toBe('number');
                                 expect(result[feature]).toBeLessThanOrEqual(0); // Loudness is typically negative
+                            } else if (['key', 'mode'].includes(feature)) {
+                                expect(typeof result[feature]).toBe('number');
+                                expect(Number.isInteger(result[feature])).toBe(true); // Integer values
                             }
                         }
                     });
@@ -86,10 +203,16 @@ describe('ReccoBeats API Integration Test', () => {
                     // At least some features should be present
                     expect(foundFeatures).toBeGreaterThan(0);
 
-                    // Check if ID references are present
-                    if (result.id || result.track_id) {
-                        expect(typeof (result.id || result.track_id)).toBe('string');
-                        console.log('Track ID found:', result.id || result.track_id);
+                    // Check if ID and href are present (updated for correct API spec)
+                    expect(typeof result.id).toBe('string');
+                    expect(typeof result.href).toBe('string');
+                    console.log('Track ID found:', result.id);
+                    console.log('Track href found:', result.href);
+
+                    // Check ISRC if present
+                    if (result.isrc) {
+                        expect(typeof result.isrc).toBe('string');
+                        console.log('ISRC found:', result.isrc);
                     }
 
                 } else {
@@ -100,30 +223,8 @@ describe('ReccoBeats API Integration Test', () => {
 
             } catch (error) {
                 console.error('Audio Features API Error:', error.message);
-
-                // Check if it's an expected API error
-                if (error.message.includes('ReccoBeats API error')) {
-                    console.log('API returned error response - checking error type');
-
-                    // For 404, null is the expected result
-                    if (error.message.includes('404')) {
-                        console.log('404 error handled correctly for audio features');
-                        return; // Test successful - 404 is handled correctly
-                    }
-                }
-
-                // For other errors, continue test but issue warning
-                console.warn('Unexpected error during Audio Features API call:', error.message);
-
-                // Test should not fail due to network problems
-                if (error.message.includes('fetch') || error.message.includes('network')) {
-                    console.log('Network issue detected - skipping audio features test');
-                    return;
-                }
-
                 throw error; // Re-throw for unexpected errors
             }
-
         }, 20000); // 20 seconds timeout for Audio Features API call
 
         test('should handle invalid ID gracefully', async () => {
@@ -139,22 +240,9 @@ describe('ReccoBeats API Integration Test', () => {
                 console.log('Invalid ID correctly returned null');
 
             } catch (error) {
-                // If an error is thrown, it should be an expected API error
-                if (error.message.includes('ReccoBeats API error') && error.message.includes('404')) {
-                    console.log('Invalid ID correctly handled with 404 error');
-                    return;
-                }
-
-                // Skip test for network errors
-                if (error.message.includes('fetch') || error.message.includes('network')) {
-                    console.log('Network issue detected - skipping invalid ID test');
-                    return;
-                }
-
                 console.warn('Unexpected error for invalid ID:', error.message);
                 throw error;
             }
-
         }, 10000);
 
         test('should throw error for empty ID', async () => {
@@ -199,16 +287,15 @@ describe('ReccoBeats API Integration Test', () => {
                     if (result) {
                         expect(typeof result).toBe('object');
                         console.log(`Result ${index + 1}:`, {
-                            id: result.id || result.track_id,
+                            id: result.id,
                             tempo: result.tempo,
                             energy: result.energy,
                             danceability: result.danceability
                         });
 
-                        // Validate basic structure
-                        if (result.id || result.track_id) {
-                            expect(typeof (result.id || result.track_id)).toBe('string');
-                        }
+                        // Validate basic structure (updated for correct API spec)
+                        expect(typeof result.id).toBe('string');
+                        expect(typeof result.href).toBe('string');
 
                         // Test some audio features if present
                         if (result.tempo !== undefined) {
@@ -234,26 +321,8 @@ describe('ReccoBeats API Integration Test', () => {
 
             } catch (error) {
                 console.error('Batch Audio Features API Error:', error.message);
-
-                // Handle expected errors gracefully
-                if (error.message.includes('ReccoBeats API error')) {
-                    console.log('API returned error response - this might be expected for batch requests');
-
-                    if (error.message.includes('404')) {
-                        console.log('404 error - some or all tracks not found in database');
-                        return;
-                    }
-                }
-
-                // Skip test for network errors
-                if (error.message.includes('fetch') || error.message.includes('network')) {
-                    console.log('Network issue detected - skipping batch test');
-                    return;
-                }
-
                 throw error;
             }
-
         }, 25000); // 25 seconds timeout for batch API call
 
         test('should handle empty array', async () => {
@@ -300,23 +369,7 @@ describe('ReccoBeats API Integration Test', () => {
 
             } catch (error) {
                 console.error('Mixed IDs Error:', error.message);
-
-                // This is acceptable - API might return error for any invalid ID
-                if (error.message.includes('ReccoBeats API error')) {
-                    console.log('API error for mixed IDs - this is acceptable behavior');
-                    return;
-                }
-
-                // Skip test for network errors
-                if (error.message.includes('fetch') || error.message.includes('network')) {
-                    console.log('Network issue detected - skipping mixed IDs test');
-                    return;
-                }
-
-                // Don't fail the test - mixed behavior is acceptable
-                console.warn('Unexpected error for mixed IDs:', error.message);
             }
-
         }, 15000);
 
     });
@@ -385,25 +438,6 @@ describe('ReccoBeats API Integration Test', () => {
 
             } catch (error) {
                 console.error('Batch method error:', error.message);
-
-                // Handle expected errors
-                if (error.message.includes('ReccoBeats API error')) {
-                    console.log('API error in batch method - checking if it\'s acceptable');
-
-                    if (error.message.includes('404')) {
-                        console.log('404 error - tracks not found in database, this is acceptable');
-                        return;
-                    }
-
-                    console.log('Other API error - skipping batch test but logging for investigation');
-                    return;
-                }
-
-                if (error.message.includes('fetch') || error.message.includes('network')) {
-                    console.log('Network issue detected - skipping batch test');
-                    return;
-                }
-
                 throw error;
             }
 
@@ -440,15 +474,6 @@ describe('ReccoBeats API Integration Test', () => {
 
             } catch (error) {
                 console.error('Large batch error:', error.message);
-
-                // Expected - most test IDs won't exist
-                if (error.message.includes('ReccoBeats API error') ||
-                    error.message.includes('fetch') ||
-                    error.message.includes('network')) {
-                    console.log('Expected error in large batch test - chunking mechanism works');
-                    return;
-                }
-
                 throw error;
             }
 

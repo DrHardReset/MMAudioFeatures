@@ -1,9 +1,24 @@
 <div class="uiRows">
-    <div data-tip="Specify spotify credentials">
+    <div><strong>Search Configuration:</strong></div>
+
+    <div style="margin-left: 20px; color: #666; font-style: italic;">
+        Both methods work well - Spotify search offers improved accuracy but requires API credentials
+    </div>
+
+    <div style="margin-left: 20px; margin-bottom: 10px;">
+        <div data-tip="Use ReccoBeats for track search">
+            <div data-id="rbReccoBeats" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'ReccoBeats', name: 'SearchMethod'}">Use ReccoBeats Search</div>
+        </div>
+        <div data-tip="Use Spotify for track search (requires credentials)">
+            <div data-id="rbSpotifySearch" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'Spotify', name: 'SearchMethod'}">Use Spotify Search <em style="color: #666; font-size: 10px;">(recommended for better results)</em></div>
+        </div>
+    </div>
+
+    <div style="margin-left: 40px;" data-tip="Specify spotify credentials">
         <div data-id="txtSpotifyClient" data-control-class="Edit">Spotify Client-ID</div>
     </div>
 
-    <div data-tip="Specify spotify credentials">
+    <div style="margin-left: 40px;" data-tip="Specify spotify credentials">
         <div data-id="txtSpotifySecret" data-control-class="Edit">Spotify Secret</div>
     </div>
 
@@ -18,10 +33,8 @@
         <div data-id="chkSaveValence" data-control-class="Checkbox" data-tip="Save positivity to Custom3 field" style="margin: 2px 0;">Custom3: Positivity (Valence)</div>
         <div data-id="chkSaveAcousticness" data-control-class="Checkbox" data-tip="Save acousticness to Custom4 field" style="margin: 2px 0;">Custom4: Acousticness</div>
         <div data-id="chkSaveInstrumentalness" data-control-class="Checkbox" data-tip="Save instrumentalness to Custom5 field" style="margin: 2px 0;">Custom5: Instrumentalness</div>
+        <p />
+        <div data-id="chkSaveComment" data-control-class="Checkbox" data-tip="Add audio features description to comment field" style="margin: 2px 0;">Comment (Description)</div>
+        <div style="margin-bottom: 5px;"><em>Note: The comment field will contain a description explaining which custom fields contain which audio features.</em></div>
     </div>
-
-    <p />
-    <div style="margin-bottom: 5px;"><em>Note: The comment field will contain a description explaining which custom fields contain which audio features.</em></div>
-
-    <div data-id="chkSaveComment" data-control-class="Checkbox" data-tip="Add audio features description to comment field">Comment (Description)</div>
 </div>

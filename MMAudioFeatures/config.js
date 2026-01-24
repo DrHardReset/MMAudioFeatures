@@ -45,6 +45,7 @@ window.configInfo = {
         // Setup event handlers
         this.setupCustomFieldHandlers();
         this.setupSearchMethodHandlers();
+        this.setupSpotifyHelpLink();
 
         // Initial updates
         this.updateCommentCheckbox();
@@ -91,6 +92,17 @@ window.configInfo = {
         }
     },
 
+    setupSpotifyHelpLink: function () {
+        if (!this.UI.lblSpotifyHelp) {
+            console.log('Spotify help label not found');
+            return;
+        }
+
+        window.localListen(this.UI.lblSpotifyHelp, 'click', function () {
+            window.uitools.openWeb('https://github.com/DrHardReset/MMAudioFeatures#setup-steps');
+        });
+    },
+
     updateCommentCheckbox: function () {
         if (!this.UI || !this.UI.chkSaveComment) return;
 
@@ -108,7 +120,6 @@ window.configInfo = {
         }
 
         // Enable/disable comment checkbox based on custom fields
-
         var saveComment = this.findInputElement(this.UI.chkSaveComment);
 
         if (saveComment) {

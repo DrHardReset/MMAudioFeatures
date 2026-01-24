@@ -92,6 +92,7 @@
                             artist: track.artist,
                             title: track.title,
                             album: track.album,
+                            albumArtist: track.albumArtist,
                             index: i
                         });
                     }

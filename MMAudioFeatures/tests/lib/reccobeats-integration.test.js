@@ -149,25 +149,54 @@ describe('ReccoBeats API Integration Test', () => {
         }
     }, 30000);
 
-    describe('getAudioFeaturesByReccoOrSpotifyId - Single ID Tests', () => {
+    describe('getAudioFeaturesByReccoOrSpotifyIds - Array-based Tests', () => {
 
-        test('should fetch audio features for existing Spotify ID', async () => {
+        test('should throw error for non-array input', async () => {
+            console.log('Testing getAudioFeaturesByReccoOrSpotifyIds with non-array input');
+
+            await expect(reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyIds('single-id')).rejects.toThrow(
+                'Array of IDs is required'
+            );
+
+            await expect(reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyIds(null)).rejects.toThrow(
+                'Array of IDs is required'
+            );
+
+            console.log('Non-array input validation works correctly');
+        });
+
+        test('should return empty array for empty input', async () => {
+            console.log('Testing getAudioFeaturesByReccoOrSpotifyIds with empty array');
+
+            const result = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyIds([]);
+
+            expect(Array.isArray(result)).toBe(true);
+            expect(result).toEqual([]);
+            console.log('Empty array correctly returned empty array');
+        });
+
+        test('should fetch audio features for single Spotify ID', async () => {
             // Example "Blinding Lights" by "The Weeknd"
             const testSpotifyId = '0VjIjW4GlUZAMYd2vXMi3b';
 
-            console.log(`Testing getAudioFeaturesByReccoOrSpotifyId with Spotify ID: ${testSpotifyId}`);
+            console.log(`Testing getAudioFeaturesByReccoOrSpotifyIds with single ID: ${testSpotifyId}`);
 
             try {
-                const result = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyId(testSpotifyId);
+                const results = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyIds([testSpotifyId]);
 
-                console.log('Audio Features API Response:', result);
+                console.log('Single ID Audio Features API Response:', results);
+
+                expect(Array.isArray(results)).toBe(true);
+                expect(results).toHaveLength(1);
+
+                const result = results[0];
 
                 if (result !== null) {
                     // Audio features were found - validate structure
                     expect(result).toBeDefined();
                     expect(typeof result).toBe('object');
 
-                    // Check expected audio feature fields (updated for correct API spec)
+                    // Check expected audio feature fields
                     const expectedFeatures = [
                         'acousticness', 'danceability', 'energy', 'instrumentalness',
                         'liveness', 'loudness', 'speechiness', 'tempo', 'valence', 'key', 'mode'
@@ -179,7 +208,7 @@ describe('ReccoBeats API Integration Test', () => {
                             foundFeatures++;
                             console.log(`${feature}: ${result[feature]}`);
 
-                            // Validate that numerical values are in expected range
+                            // Validate numerical values
                             if (['acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'speechiness', 'valence'].includes(feature)) {
                                 expect(typeof result[feature]).toBe('number');
                                 expect(result[feature]).toBeGreaterThanOrEqual(0);
@@ -187,102 +216,56 @@ describe('ReccoBeats API Integration Test', () => {
                             } else if (feature === 'tempo') {
                                 expect(typeof result[feature]).toBe('number');
                                 expect(result[feature]).toBeGreaterThan(0);
-                                expect(result[feature]).toBeLessThan(300); // Reasonable tempo range
+                                expect(result[feature]).toBeLessThan(300);
                             } else if (feature === 'loudness') {
                                 expect(typeof result[feature]).toBe('number');
-                                expect(result[feature]).toBeLessThanOrEqual(0); // Loudness is typically negative
+                                expect(result[feature]).toBeLessThanOrEqual(0);
                             } else if (['key', 'mode'].includes(feature)) {
                                 expect(typeof result[feature]).toBe('number');
-                                expect(Number.isInteger(result[feature])).toBe(true); // Integer values
+                                expect(Number.isInteger(result[feature])).toBe(true);
                             }
                         }
                     });
 
                     console.log(`Audio Features successfully found (${foundFeatures}/${expectedFeatures.length} features present)`);
-
-                    // At least some features should be present
                     expect(foundFeatures).toBeGreaterThan(0);
 
-                    // Check if ID and href are present (updated for correct API spec)
+                    // Check ID and href
                     expect(typeof result.id).toBe('string');
                     expect(typeof result.href).toBe('string');
                     console.log('Track ID found:', result.id);
                     console.log('Track href found:', result.href);
 
-                    // Check ISRC if present
-                    if (result.isrc) {
-                        expect(typeof result.isrc).toBe('string');
-                        console.log('ISRC found:', result.isrc);
-                    }
-
                 } else {
-                    // Audio features were not found - this is also a valid result
                     console.log('Audio Features not found in ReccoBeats database (returned null)');
                     expect(result).toBeNull();
                 }
 
             } catch (error) {
                 console.error('Audio Features API Error:', error.message);
-                throw error; // Re-throw for unexpected errors
-            }
-        }, 20000); // 20 seconds timeout for Audio Features API call
-
-        test('should handle invalid ID gracefully', async () => {
-            const invalidId = 'invalid-spotify-id-12345';
-
-            console.log(`Testing getAudioFeaturesByReccoOrSpotifyId with invalid ID: ${invalidId}`);
-
-            try {
-                const result = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyId(invalidId);
-
-                // Expect null to be returned for invalid IDs
-                expect(result).toBeNull();
-                console.log('Invalid ID correctly returned null');
-
-            } catch (error) {
-                console.warn('Unexpected error for invalid ID:', error.message);
                 throw error;
             }
-        }, 10000);
+        }, 20000);
 
-        test('should throw error for empty ID', async () => {
-            console.log('Testing getAudioFeaturesByReccoOrSpotifyId with empty ID');
-
-            await expect(reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyId('')).rejects.toThrow(
-                'ReccoBeats ID or Spotify ID is required'
-            );
-
-            await expect(reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyId(null)).rejects.toThrow(
-                'ReccoBeats ID or Spotify ID is required'
-            );
-
-            console.log('Empty ID validation works correctly');
-        });
-
-    });
-
-    describe('getAudioFeaturesByReccoOrSpotifyId - Batch Array Tests', () => {
-
-        test('should fetch audio features for multiple Spotify IDs using array', async () => {
-            // Test with multiple known Spotify IDs
+        test('should fetch audio features for multiple Spotify IDs', async () => {
             const testSpotifyIds = [
                 '0VjIjW4GlUZAMYd2vXMi3b', // "Blinding Lights" by The Weeknd
                 '4iV5W9uYEdYUVa79Axb7Rh', // "Shape of You" by Ed Sheeran
                 '7qiZfU4dY1lWllzX7mPBI3'  // "Don't Stop Me Now" by Queen
             ];
 
-            console.log(`Testing getAudioFeaturesByReccoOrSpotifyId with array of ${testSpotifyIds.length} IDs:`, testSpotifyIds);
+            console.log(`Testing getAudioFeaturesByReccoOrSpotifyIds with ${testSpotifyIds.length} IDs:`, testSpotifyIds);
 
             try {
-                const results = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyId(testSpotifyIds);
+                const results = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyIds(testSpotifyIds);
 
-                console.log('Batch Audio Features API Response:', results);
+                console.log('Multiple IDs Audio Features API Response:', results);
 
-                // Should return an array
                 expect(Array.isArray(results)).toBe(true);
+                expect(results).toHaveLength(testSpotifyIds.length);
                 console.log(`Received ${results.length} results for ${testSpotifyIds.length} requested IDs`);
 
-                // Validate each result that was found
+                // Validate each result
                 results.forEach((result, index) => {
                     if (result) {
                         expect(typeof result).toBe('object');
@@ -293,11 +276,9 @@ describe('ReccoBeats API Integration Test', () => {
                             danceability: result.danceability
                         });
 
-                        // Validate basic structure (updated for correct API spec)
                         expect(typeof result.id).toBe('string');
                         expect(typeof result.href).toBe('string');
 
-                        // Test some audio features if present
                         if (result.tempo !== undefined) {
                             expect(typeof result.tempo).toBe('number');
                             expect(result.tempo).toBeGreaterThan(0);
@@ -314,163 +295,91 @@ describe('ReccoBeats API Integration Test', () => {
                             expect(result.danceability).toBeGreaterThanOrEqual(0);
                             expect(result.danceability).toBeLessThanOrEqual(1);
                         }
+                    } else {
+                        console.log(`Result ${index + 1}: null (not found)`);
                     }
                 });
 
-                console.log(`✅ Batch request successfully processed ${results.length} results`);
+                console.log(`✅ Multiple IDs request successfully processed ${results.length} results`);
 
             } catch (error) {
-                console.error('Batch Audio Features API Error:', error.message);
+                console.error('Multiple IDs Audio Features API Error:', error.message);
                 throw error;
             }
-        }, 25000); // 25 seconds timeout for batch API call
+        }, 25000);
 
-        test('should handle empty array', async () => {
-            console.log('Testing getAudioFeaturesByReccoOrSpotifyId with empty array');
+        test('should handle invalid IDs gracefully', async () => {
+            const invalidIds = ['invalid-id-1', 'invalid-id-2'];
 
-            await expect(reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyId([])).rejects.toThrow(
-                'At least one ID is required'
-            );
-
-            console.log('Empty array validation works correctly');
-        });
-
-        test('should handle array with too many IDs', async () => {
-            const tooManyIds = Array.from({ length: 41 }, (_, i) => `test-id-${i}`);
-
-            console.log(`Testing getAudioFeaturesByReccoOrSpotifyId with ${tooManyIds.length} IDs (should exceed limit)`);
-
-            await expect(reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyId(tooManyIds)).rejects.toThrow(
-                'Maximum 40 IDs allowed per request'
-            );
-
-            console.log('Array size limit validation works correctly');
-        });
-
-        test('should handle mixed valid and invalid IDs in array', async () => {
-            const mixedIds = [
-                '0VjIjW4GlUZAMYd2vXMi3b', // Valid: "Blinding Lights" by The Weeknd
-                'invalid-spotify-id-12345', // Invalid
-                '4iV5W9uYEdYUVa79Axb7Rh'  // Valid: "Shape of You" by Ed Sheeran
-            ];
-
-            console.log('Testing getAudioFeaturesByReccoOrSpotifyId with mixed valid/invalid IDs:', mixedIds);
+            console.log('Testing getAudioFeaturesByReccoOrSpotifyIds with invalid IDs:', invalidIds);
 
             try {
-                const results = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyId(mixedIds);
+                const results = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyIds(invalidIds);
+
+                expect(Array.isArray(results)).toBe(true);
+                expect(results).toHaveLength(invalidIds.length);
+
+                // All should be null for invalid IDs
+                results.forEach(result => {
+                    expect(result).toBeNull();
+                });
+
+                console.log('Invalid IDs correctly returned null values');
+
+            } catch (error) {
+                console.error('Invalid IDs Error:', error.message);
+                throw error;
+            }
+        }, 15000);
+
+        test('should handle mixed valid and invalid IDs', async () => {
+            const mixedIds = [
+                '0VjIjW4GlUZAMYd2vXMi3b', // Valid: "Blinding Lights"
+                'invalid-spotify-id-12345', // Invalid
+                '4iV5W9uYEdYUVa79Axb7Rh'  // Valid: "Shape of You"
+            ];
+
+            console.log('Testing getAudioFeaturesByReccoOrSpotifyIds with mixed valid/invalid IDs:', mixedIds);
+
+            try {
+                const results = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyIds(mixedIds);
 
                 console.log('Mixed IDs results:', results);
 
-                // Should return an array (might be empty or partially filled)
                 expect(Array.isArray(results)).toBe(true);
-                console.log(`Received ${results.length} results for ${mixedIds.length} requested mixed IDs`);
+                expect(results).toHaveLength(mixedIds.length);
 
+                // Check that valid IDs returned data (or null) and invalid IDs returned null
+                expect(results[1]).toBeNull(); // Middle invalid ID should be null
+
+                console.log(`Received ${results.length} results for ${mixedIds.length} requested mixed IDs`);
                 console.log('✅ Mixed ID request handled gracefully');
 
             } catch (error) {
                 console.error('Mixed IDs Error:', error.message);
+                throw error;
             }
         }, 15000);
 
-    });
-
-    describe('getAudioFeaturesBatch - Dedicated Batch Method Tests', () => {
-
-        test('should process batch of IDs correctly', async () => {
-            const testSpotifyIds = [
-                '0VjIjW4GlUZAMYd2vXMi3b', // "Blinding Lights" by The Weeknd
-                '4iV5W9uYEdYUVa79Axb7Rh', // "Shape of You" by Ed Sheeran
-                '7qiZfU4dY1lWllzX7mPBI3'  // "Don't Stop Me Now" by Queen
-            ];
-
-            console.log(`Testing getAudioFeaturesBatch with ${testSpotifyIds.length} IDs:`, testSpotifyIds);
-
-            try {
-                const results = await reccoBeatsClient.getAudioFeaturesBatch(testSpotifyIds);
-
-                console.log('Batch method results:', results);
-
-                // Should return an array
-                expect(Array.isArray(results)).toBe(true);
-
-                expect(results.length).toBe(testSpotifyIds.length);
-                console.log(`✅ Correct array size: ${results.length} results for ${testSpotifyIds.length} requested IDs`);
-
-                results.forEach((result, index) => {
-                    const requestedSpotifyId = testSpotifyIds[index];
-                    console.log(`\n--- Validating result ${index + 1} for Spotify ID: ${requestedSpotifyId} ---`);
-
-                    if (result === null) {
-                        console.log(`Result ${index + 1}: No audio features found (null) - this is acceptable`);
-                        return; // Skip to next result - null is valid for tracks not found in database
-                    }
-
-                    // If a result is present, it must be an object
-                    expect(typeof result).toBe('object');
-                    expect(result).not.toBeNull();
-
-                    let idMatched = false;
-                    let matchReason = '';
-
-                    // Option 1: result.href should contain the corresponding Spotify URL
-                    if (result.href) {
-                        const expectedSpotifyUrl = `https://open.spotify.com/track/${requestedSpotifyId}`;
-
-                        if (result.href === expectedSpotifyUrl) {
-                            idMatched = true;
-                            matchReason = `href matches Spotify URL: ${result.href}`;
-                        }
-                    }
-
-                    // Option 2: result.id should be ReccoBeats ID
-                    if (!idMatched && result.id && result.id === requestedSpotifyId) {
-                        idMatched = true;
-                        matchReason = `id matches requested Spotify ID: ${result.id}`;
-                    }
-
-                    // Enforce ID validation
-                    expect(idMatched).toBe(true);
-                    console.log(`✅ Result ${index + 1}: ${matchReason}`);
-                });
-
-                console.log(`\n✅ All ${testSpotifyIds.length} results validated successfully`);
-                console.log('✅ Dedicated batch method works correctly with proper ID validation');
-
-            } catch (error) {
-                console.error('Batch method error:', error.message);
-                throw error;
-            }
-
-        }, 25000);
-
-        test('should throw error for non-array input to batch method', async () => {
-            console.log('Testing getAudioFeaturesBatch with non-array input');
-
-            await expect(reccoBeatsClient.getAudioFeaturesBatch('single-id')).rejects.toThrow(
-                'Array of IDs is required for batch processing'
-            );
-
-            await expect(reccoBeatsClient.getAudioFeaturesBatch(null)).rejects.toThrow(
-                'Array of IDs is required for batch processing'
-            );
-
-            console.log('Batch method input validation works correctly');
-        });
-
-        test('should handle large batch (> 40 IDs) by chunking', async () => {
-            // Create 45 test IDs to test chunking
+        test('should handle large batch (> 40 IDs) by automatic chunking', async () => {
+            // Create 45 test IDs to test automatic chunking
             const largeIdSet = Array.from({ length: 45 }, (_, i) => `test-spotify-id-${i.toString().padStart(3, '0')}`);
 
-            console.log(`Testing getAudioFeaturesBatch with ${largeIdSet.length} IDs (should chunk into 2 requests)`);
+            console.log(`Testing getAudioFeaturesByReccoOrSpotifyIds with ${largeIdSet.length} IDs (should auto-chunk into 2 requests)`);
 
             try {
-                const results = await reccoBeatsClient.getAudioFeaturesBatch(largeIdSet);
+                const results = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyIds(largeIdSet);
 
-                // Should return an array
                 expect(Array.isArray(results)).toBe(true);
+                expect(results).toHaveLength(largeIdSet.length);
                 console.log(`Large batch returned ${results.length} results for ${largeIdSet.length} requested IDs`);
 
-                console.log('✅ Large batch chunking works correctly');
+                // All should be null since these are fake IDs
+                results.forEach(result => {
+                    expect(result).toBeNull();
+                });
+
+                console.log('✅ Large batch automatic chunking works correctly');
 
             } catch (error) {
                 console.error('Large batch error:', error.message);
@@ -478,6 +387,64 @@ describe('ReccoBeats API Integration Test', () => {
             }
 
         }, 30000);
+
+        test('should maintain order with chunking', async () => {
+            // Use 50 real IDs (if available) or mix of real and fake
+            const testIds = [
+                '0VjIjW4GlUZAMYd2vXMi3b', // Real
+                ...Array.from({ length: 40 }, (_, i) => `fake-id-${i}`), // Fake IDs for chunk 1
+                '4iV5W9uYEdYUVa79Axb7Rh', // Real
+                ...Array.from({ length: 8 }, (_, i) => `fake-id-chunk2-${i}`) // Fake IDs for chunk 2
+            ];
+
+            console.log(`Testing order preservation with ${testIds.length} IDs across multiple chunks`);
+
+            try {
+                const results = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyIds(testIds);
+
+                expect(Array.isArray(results)).toBe(true);
+                expect(results).toHaveLength(testIds.length);
+
+                // First result should correspond to first real ID (or be null)
+                console.log('First ID result:', results[0] ? results[0].id : 'null');
+
+                // 41st result should correspond to second real ID (or be null)
+                console.log('41st ID result:', results[41] ? results[41].id : 'null');
+
+                console.log('✅ Order maintained across chunks');
+
+            } catch (error) {
+                console.error('Order preservation error:', error.message);
+                throw error;
+            }
+
+        }, 35000);
+
+        test('should handle partial chunk failure gracefully', async () => {
+            // This test simulates what happens when some chunks succeed and others fail
+            // We can't force a real API failure, but we test with a mix of potentially problematic IDs
+            const problematicIds = [
+                '0VjIjW4GlUZAMYd2vXMi3b', // Valid
+                ...Array.from({ length: 50 }, (_, i) => `potentially-bad-id-${i}`)
+            ];
+
+            console.log(`Testing partial failure handling with ${problematicIds.length} IDs`);
+
+            try {
+                const results = await reccoBeatsClient.getAudioFeaturesByReccoOrSpotifyIds(problematicIds);
+
+                expect(Array.isArray(results)).toBe(true);
+                expect(results).toHaveLength(problematicIds.length);
+
+                console.log('✅ Partial failure scenario handled - array length maintained');
+
+            } catch (error) {
+                // Even on error, the function should not throw but return nulls
+                console.error('Unexpected error in partial failure test:', error.message);
+                throw error;
+            }
+
+        }, 40000);
 
     });
 

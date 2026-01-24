@@ -20,9 +20,9 @@ This MediaMonkey addon enhances your music collection by automatically fetching 
 - **Instrumentalness**: Likelihood that a track contains no vocals (0-100%)
 
 ### 🔧 Smart Integration
-- **ReccoBeats Search**: Works out-of-the-box without credentials for reliable track identification
-- **Optional Spotify Search**: *Recommended for better accuracy* - Enhanced track matching using Spotify's comprehensive database
-- **Dual Search Options**: Choose between ReccoBeats (no setup) or Spotify (better results) for track identification
+- **ReccoBeats Search**: Works out-of-the-box without credentials, but requires **precise track metadata** - Artist, Title, and Album must match official release information exactly for successful track identification
+- **Optional Spotify Search**: *Recommended for better accuracy* - Enhanced track matching using Spotify's comprehensive database with fuzzy search capabilities
+- **Dual Search Options**: Choose between ReccoBeats (no setup, strict matching) or Spotify (better results, intelligent matching) for track identification
 - **ReccoBeats Audio Features**: All audio features are retrieved from ReccoBeats' pre-analyzed database
 - **Flexible Configuration**: Choose which audio features to save and which search method to use
 - **Custom Field Mapping**: Maps audio features to MediaMonkey's custom fields
@@ -57,6 +57,7 @@ This MediaMonkey addon enhances your music collection by automatically fetching 
    - Select which audio features to save
 
 3. **Optional: Enhanced Spotify Search Setup**
+   - ⚠️ As of January 2026, Spotify "temporarily" disabled creation of new apps, see [Spotify community discussion](https://community.spotify.com/t5/Spotify-for-Developers/Unable-to-create-app/td-p/7283365)
    - Visit [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)
    - Create a new app
    - Use any **App name** and **App description** of your choice
@@ -73,8 +74,7 @@ The addon offers two search methods for track identification:
 **ReccoBeats Search** (Default)
 - ✅ Works immediately without setup
 - ✅ No API credentials required
-- ✅ Good track matching results
-- ✅ Direct access to audio features
+- ❗ slow and quite limited track matching results
 
 **Spotify Search** (*Recommended*)
 - ⭐ Enhanced accuracy and performance
@@ -94,8 +94,11 @@ The addon offers two search methods for track identification:
 4. Review the found audio features in the dialog
 5. Click **Save** to apply the changes to your tracks
 
-![Audio Features Search Results](MMAudioFeatures/images/screenshot.png)
-*The search results dialog showing audio features, album covers, and summary information for selected tracks*
+![ReccoBeats Search Results](MMAudioFeatures/images/screenshot_search_reccobeats.png)
+*ReccoBeats search: Track matching with audio features and direct API access*
+
+![Spotify Search Results](MMAudioFeatures/images/screenshot_search_spotify.png)
+*Spotify search: Enhanced track matching with album covers, track details and ReccoBeats audio features*
 
 ### Configuration Options
 

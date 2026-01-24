@@ -98,28 +98,12 @@ class ReccoBeatsClient {
     constructor() {
         this.baseUrl = 'https://api.reccobeats.com';
         this.apiKey = null;
-    }
 
-    /**
-     * Helper function to extract the first artist from a semicolon-separated list.
-     * MediaMonkey often stores multiple artists as "Artist 1; Artist 2; Artist 3"
-     * but ReccoBeats searches work better with single artist names.
-     *
-     * @param {string} artistString - The artist string, potentially with multiple artists
-     * @returns {string} The first artist name, trimmed
-     *
-     * @example
-     * _getFirstArtist("David Guetta; Sia") // returns "David Guetta"
-     * _getFirstArtist("Single Artist") // returns "Single Artist"
-     */
-    _getFirstArtist(artistString) {
-        if (!artistString) return '';
-
-        // Split by semicolon and take the first part, then trim whitespace
-        const firstArtist = artistString.split(';')[0].trim();
-
-        console.log(`ReccoBeats: Using first artist "${firstArtist}" from "${artistString}"`);
-        return firstArtist;
+        // Session cache for better performance
+        this._cache = {
+            artists: new Map(), // key: artistName -> value: Artist[]
+            albums: new Map(),  // key: artistId:albumName -> value: Album[]
+        };
     }
 
     async _fetchFromApi(endpoint) {
@@ -144,6 +128,65 @@ class ReccoBeatsClient {
     }
 
     /**
+     * Normalizes a string for comparison by:
+     * - Converting to lowercase
+     * - Trimming whitespace
+     */
+    _normalizeForComparison(str) {
+        if (!str) {
+            return '';
+        }
+
+        return str
+            .toLowerCase()
+            .trim();
+    }
+
+    /**
+     * Checks if two strings match (case-insensitive, whitespace-insensitive)
+     */
+    _matchStrings(str1, str2, exact = true) {
+        const norm1 = this._normalizeForComparison(str1);
+        const norm2 = this._normalizeForComparison(str2);
+
+        if (exact) {
+            return norm1 === norm2;
+        } else {
+            return norm1.includes(norm2) || norm2.includes(norm1);
+        }
+    }
+
+    /**
+     * Helper function to extract the first artist from a semicolon-separated list.
+     * MediaMonkey often stores multiple artists as "Artist 1; Artist 2; Artist 3"
+     * but ReccoBeats searches work better with single artist names.
+     *
+     * @param {string} artistString - The artist string, potentially with multiple artists
+     * @returns {string} The first artist name, trimmed
+     *
+     * @example
+     * _getFirstArtist("David Guetta; Sia") // returns "David Guetta"
+     * _getFirstArtist("Single Artist") // returns "Single Artist"
+     */
+    _getFirstArtist(artistString) {
+        if (!artistString) return '';
+
+        // Split by semicolon and take the first part, then trim whitespace
+        const firstArtist = artistString.split(';')[0].trim();
+
+        console.log(`ReccoBeats: Using first artist "${firstArtist}" from "${artistString}"`);
+        return firstArtist;
+    }
+
+    /**
+     * Clears the internal cache. Useful when starting a new search session.
+     */
+    clearCache() {
+        this._cache.artists.clear();
+        this._cache.albums.clear();
+    }
+
+    /**
      * Searches for artists by name in the ReccoBeats database.
      * Returns all artists that match the search text.
      * Automatically uses only the first artist if multiple artists are provided (separated by semicolon).
@@ -158,7 +201,7 @@ class ReccoBeatsClient {
      * const exactMatches = await client.searchArtist('Headhunterz', true);
      * const multipleArtists = await client.searchArtist('David Guetta; Sia', true); // Will search for "David Guetta"
      */
-    async searchArtist(artist, exactMatch = false) {
+    async searchArtist(artist, exactMatch = true) {
         if (!artist) {
             throw new Error('Artist name is required');
         }
@@ -169,6 +212,14 @@ class ReccoBeatsClient {
             throw new Error('No valid artist name found');
         }
 
+        // Check cache first
+        const cacheKey = `${firstArtist}:${exactMatch}`;
+        if (this._cache.artists.has(cacheKey)) {
+            console.log(`ReccoBeats: Using cached artist results for "${firstArtist}"`);
+            return this._cache.artists.get(cacheKey);
+        }
+
+        // Not in cache, do the search
         const allArtists = [];
         let page = 0;
         const size = 50;
@@ -192,53 +243,79 @@ class ReccoBeatsClient {
         }
 
         // Filter for exact matches if requested
-        const results = exactMatch ? allArtists.filter(a => a.name === firstArtist) : allArtists;
+        const results = exactMatch ? allArtists.filter(a => this._matchStrings(a.name, firstArtist, true)) : allArtists;
 
         if (results.length === 0) {
             const matchType = exactMatch ? 'exact match' : 'search results';
             throw new Error(`Artist '${firstArtist}' not found in ReccoBeats (${matchType}).`);
         }
 
-        return results.map(artistData => new Artist(artistData));
+        const artistObjects = results.map(artistData => new Artist(artistData));
+
+        // Cache the results before returning
+        this._cache.artists.set(cacheKey, artistObjects);
+
+        return artistObjects;
     }
 
     /**
-     * Searches for an album by artist ID and album name.
-     *
-     * @param {string} artistId - The ReccoBeats ID of the artist
-     * @param {string} album - The name of the album
-     * @returns {Promise<Album>} Album object
-     * @throws {Error} When required parameters are missing or album not found
-     */
+ * Searches for albums by artist ID and album name.
+ * Returns all matching albums (there can be multiple editions/versions).
+ * Results are cached for performance.
+ *
+ * @param {string} artistId - The ReccoBeats ID of the artist
+ * @param {string} album - The name of the album
+ * @returns {Promise<Album[]>} Array of Album objects
+ * @throws {Error} When required parameters are missing or no albums found
+ */
     async searchArtistAlbum(artistId, album) {
         if (!artistId || !album) {
             throw new Error('Artist id and album are required');
         }
 
+        // Check cache first
+        const cacheKey = `${artistId}:${album}`;
+        if (this._cache.albums.has(cacheKey)) {
+            console.log(`ReccoBeats: Using cached album results for artist ${artistId}, album "${album}"`);
+            return this._cache.albums.get(cacheKey);
+        }
+
+        // Not in cache, do the search
         let page = 0;
         const size = 50;
+        const matchingAlbums = [];
 
         while (true) {
-            const data = await this._fetchFromApi(`/v1/artist/${encodeURIComponent(artistId)}/album?page=${page}&size=${size}`);
+            const albumData = await this._fetchFromApi(`/v1/artist/${encodeURIComponent(artistId)}/album?page=${page}&size=${size}`);
 
-            if (!data.content || !Array.isArray(data.content)) {
-                throw new Error(`Album '${album}' not found for artist ID '${artistId}' in ReccoBeats.`);
+            if (!albumData.content || !Array.isArray(albumData.content)) {
+                break;
             }
 
-            const foundAlbum = data.content.find(a => a.name === album);
+            const foundAlbums = albumData.content.filter(a =>
+                this._matchStrings(a.name, album, true)
+            );
 
-            if (foundAlbum) {
-                return new Album(foundAlbum);
-            }
+            matchingAlbums.push(...foundAlbums);
 
-            if (page >= data.totalPages - 1 || data.content.length < size) {
+            if (page >= albumData.totalPages - 1 || albumData.content.length < size) {
                 break;
             }
 
             page++;
         }
 
-        throw new Error(`Album '${album}' not found for artist ID '${artistId}' in ReccoBeats.`);
+        if (matchingAlbums.length === 0) {
+            throw new Error(`Album '${album}' not found for artist ID '${artistId}' in ReccoBeats.`);
+        }
+
+        // Convert to Album objects
+        const albumObjects = matchingAlbums.map(albumData => new Album(albumData));
+
+        // Cache the results before returning
+        this._cache.albums.set(cacheKey, albumObjects);
+
+        return albumObjects;
     }
 
     /**
@@ -272,19 +349,21 @@ class ReccoBeatsClient {
             const size = 50;
 
             while (true) {
-                const data = await this._fetchFromApi(`/v1/artist/${encodeURIComponent(foundArtist.id)}/track?page=${page}&size=${size}`);
+                const trackData = await this._fetchFromApi(`/v1/artist/${encodeURIComponent(foundArtist.id)}/track?page=${page}&size=${size}`);
 
-                if (!data.content || !Array.isArray(data.content)) {
+                if (!trackData.content || !Array.isArray(trackData.content)) {
                     break;
                 }
 
-                const foundTrack = data.content.find(t => t.trackTitle === track);
+                const foundTrack = trackData.content.find(t =>
+                    this._matchStrings(t.trackTitle, track, true)
+                );
 
                 if (foundTrack) {
                     return new Track(foundTrack);
                 }
 
-                if (page >= data.totalPages - 1 || data.content.length < size) {
+                if (page >= trackData.totalPages - 1 || trackData.content.length < size) {
                     break;
                 }
 
@@ -297,7 +376,9 @@ class ReccoBeatsClient {
 
     /**
      * Search for a track by artist name, album name and track name.
+     * This provides the most precise search by narrowing down to a specific album.
      * Searches all artists with matching name and all albums with matching name.
+     * Results are cached for performance - repeated searches for the same artist/album are fast.
      * Automatically uses only the first artist if multiple artists are provided (separated by semicolon).
      *
      * @param {string} artist - The name of the artist (may contain multiple artists separated by semicolon)
@@ -305,85 +386,80 @@ class ReccoBeatsClient {
      * @param {string} track - The name of the track
      * @returns {Promise<TrackInfo>} TrackInfo object with artist and album information
      * @throws {Error} When required parameters are missing or when the track is not found
+     *
+     * @example
+     * // Basic search with album for better accuracy
+     * const track = await client.searchArtistAlbumTrack('Goldfish', 'Late Night People', 'If I Could Find');
+     * console.log(track.trackTitle); // "If I Could Find"
+     * console.log(track.artistInfo.name); // "Goldfish"
+     * console.log(track.albumInfo.name); // "Late Night People"
+     *
+     * @example
+     * // Works with multiple artists (uses first one)
+     * const track = await client.searchArtistAlbumTrack('David Guetta; Sia', 'Nothing But The Beat', 'Titanium');
+     * // Will search for "David Guetta"
      */
     async searchArtistAlbumTrack(artist, album, track) {
         if (!artist || !album || !track) {
             throw new Error('Artist name, album and track are required');
         }
 
-        // Use only the first artist for ReccoBeats searches
         const firstArtist = this._getFirstArtist(artist);
         if (!firstArtist) {
             throw new Error('No valid artist name found');
         }
 
-        // Find all artists with exact name match using the updated searchArtist function
+        // Use searchArtist directly - it now has caching built-in
         const matchingArtists = await this.searchArtist(firstArtist, true);
 
-        // Search for the track in each matching artist's albums
         for (const foundArtist of matchingArtists) {
-            // Collect all albums with matching name for this artist
-            let albumPage = 0;
-            const albumSize = 50;
-            const matchingAlbums = [];
+            // Use searchArtistAlbum directly - it now has caching built-in
+            try {
+                const matchingAlbums = await this.searchArtistAlbum(foundArtist.id, album);
 
-            while (true) {
-                const albumData = await this._fetchFromApi(`/v1/artist/${encodeURIComponent(foundArtist.id)}/album?page=${albumPage}&size=${albumSize}`);
+                // Search for track in each matching album
+                for (const foundAlbum of matchingAlbums) {
+                    let trackPage = 0;
+                    const trackSize = 50;
 
-                if (!albumData.content || !Array.isArray(albumData.content)) {
-                    break;
-                }
+                    while (true) {
+                        const trackData = await this._fetchFromApi(`/v1/album/${encodeURIComponent(foundAlbum.id)}/track?page=${trackPage}&size=${trackSize}`);
 
-                // Find all albums with the matching name (API uses 'name' for albums)
-                const foundAlbums = albumData.content.filter(a => a.name === album);
-                matchingAlbums.push(...foundAlbums);
+                        if (!trackData.content || !Array.isArray(trackData.content)) {
+                            break;
+                        }
 
-                // Check if we've reached the end of albums
-                if (albumPage >= albumData.totalPages - 1 || albumData.content.length < albumSize) {
-                    break;
-                }
+                        const foundTrack = trackData.content.find(t =>
+                            this._matchStrings(t.trackTitle, track, true)
+                        );
 
-                albumPage++;
-            }
+                        if (foundTrack) {
+                            return new TrackInfo({
+                                ...foundTrack,
+                                artistInfo: {
+                                    id: foundArtist.id,
+                                    name: foundArtist.name,
+                                    href: foundArtist.href
+                                },
+                                albumInfo: {
+                                    id: foundAlbum.id,
+                                    name: foundAlbum.name,
+                                    href: foundAlbum.href
+                                }
+                            });
+                        }
 
-            // Search for the track in each matching album
-            for (const foundAlbum of matchingAlbums) {
-                let trackPage = 0;
-                const trackSize = 50;
+                        if (trackPage >= trackData.totalPages - 1 || trackData.content.length < trackSize) {
+                            break;
+                        }
 
-                while (true) {
-                    const trackData = await this._fetchFromApi(`/v1/album/${encodeURIComponent(foundAlbum.id)}/track?page=${trackPage}&size=${trackSize}`);
-
-                    if (!trackData.content || !Array.isArray(trackData.content)) {
-                        break;
+                        trackPage++;
                     }
-
-                    // Look for the track in this album
-                    const foundTrack = trackData.content.find(t => t.trackTitle === track);
-                    if (foundTrack) {
-                        // Add artist and album information to the track result
-                        return new TrackInfo({
-                            ...foundTrack,
-                            artistInfo: {
-                                id: foundArtist.id,
-                                name: foundArtist.name,
-                                href: foundArtist.href
-                            },
-                            albumInfo: {
-                                id: foundAlbum.id,
-                                name: foundAlbum.name,
-                                href: foundAlbum.href
-                            }
-                        });
-                    }
-
-                    // Check if we've reached the end of tracks for this album
-                    if (trackPage >= trackData.totalPages - 1 || trackData.content.length < trackSize) {
-                        break;
-                    }
-
-                    trackPage++;
                 }
+            } catch (error) {
+                // Album not found for this artist, continue with next artist
+                console.log(`ReccoBeats: Album '${album}' not found for artist '${foundArtist.name}', trying next artist...`);
+                continue;
             }
         }
 
@@ -391,51 +467,49 @@ class ReccoBeatsClient {
     }
 
     /**
-     * Fetches audio features for one or more tracks by ReccoBeats or Spotify ID.
+     * Unified search function for tracks with optional album parameter.
+     * Automatically routes to the appropriate search method based on parameters.
+     * Automatically uses only the first artist if multiple artists are provided (separated by semicolon).
      *
-     * @param {string|string[]} reccoOrSpotifyIds - Single ID string or array of ID strings
-     * @returns {Promise<AudioFeatures|AudioFeatures[]|null>} AudioFeatures object(s) or null if not found
-     * @throws {Error} When ID is missing, empty array provided, or more than 40 IDs in array
+     * @param {string} artist - Artist name (may contain multiple artists separated by semicolon)
+     * @param {string} track - Track name
+     * @param {string|null} [album=null] - Optional album name
+     * @returns {Promise<Track|TrackInfo>} Track object (with album info if album provided)
+     * @throws {Error} When required parameters are missing or track not found
+     *
+     * @example
+     * // Search without album
+     * const track1 = await client.searchTracks('Headhunterz', 'Orange Heart');
+     *
+     * // Search with album for better accuracy
+     * const track2 = await client.searchTracks('Headhunterz', 'Orange Heart', 'Orange Heart');
      */
-    async getAudioFeaturesByReccoOrSpotifyId(reccoOrSpotifyIds) {
-        if (!reccoOrSpotifyIds) {
-            throw new Error('ReccoBeats ID or Spotify ID is required');
+    async searchTracks(artist, track, album = null) {
+        if (!artist || !track) {
+            throw new Error('Artist name and track name are required');
         }
 
-        // Support both single IDs and arrays
-        const ids = Array.isArray(reccoOrSpotifyIds) ? reccoOrSpotifyIds : [reccoOrSpotifyIds];
-
-        if (ids.length === 0) {
-            throw new Error('At least one ID is required');
+        // If album is provided, use the more specific search
+        if (album) {
+            return await this.searchArtistAlbumTrack(artist, album, track);
         }
 
-        if (ids.length > 40) {
-            throw new Error('Maximum 40 IDs allowed per request');
-        }
-
-        const idsParam = ids.join(',');
-        const data = await this._fetchFromApi(`/v1/audio-features?ids=${encodeURIComponent(idsParam)}`);
-
-        // For backward compatibility: return first element for single ID
-        if (!Array.isArray(reccoOrSpotifyIds)) {
-            const result = data.content && data.content.length > 0 ? data.content[0] : null;
-            return result ? new AudioFeatures(result) : null;
-        }
-
-        // For arrays: return all results
-        return (data.content || []).map(item => item ? new AudioFeatures(item) : null);
+        // Otherwise use the simpler artist+track search
+        return await this.searchArtistTrack(artist, track);
     }
 
     /**
-     * Processes large batches of ReccoBeats or Spotify IDs for audio features by chunking them into smaller requests.
+     * Fetches audio features for multiple tracks by ReccoBeats or Spotify IDs.
+     * Automatically chunks large batches into multiple requests (max 40 IDs per request).
+     * Always accepts and returns arrays for consistent API.
      *
      * @param {string[]} reccoOrSpotifyIds - Array of ReccoBeats or Spotify ID strings
-     * @returns {Promise<(AudioFeatures|null)[]>} Array of AudioFeatures objects or nulls for not found
-     * @throws {Error} When input is not an array
+     * @returns {Promise<(AudioFeatures|null)[]>} Array of AudioFeatures objects (null for not found)
+     * @throws {Error} When input is not an array or empty
      */
-    async getAudioFeaturesBatch(reccoOrSpotifyIds) {
+    async getAudioFeaturesByReccoOrSpotifyIds(reccoOrSpotifyIds) {
         if (!Array.isArray(reccoOrSpotifyIds)) {
-            throw new Error('Array of IDs is required for batch processing');
+            throw new Error('Array of IDs is required');
         }
 
         if (reccoOrSpotifyIds.length === 0) {
@@ -445,30 +519,30 @@ class ReccoBeatsClient {
         const allResults = [];
         const maxChunkSize = 40;
 
+        // Process in chunks of up to 40 IDs
         for (let i = 0; i < reccoOrSpotifyIds.length; i += maxChunkSize) {
             const chunk = reccoOrSpotifyIds.slice(i, i + maxChunkSize);
+            const idsParam = chunk.join(',');
 
             try {
-                // Use the existing method which handles arrays
-                const chunkResults = await this.getAudioFeaturesByReccoOrSpotifyId(chunk);
+                const data = await this._fetchFromApi(`/v1/audio-features?ids=${encodeURIComponent(idsParam)}`);
 
-                // Ensure we maintain the order by creating a result array matching the chunk
+                // Maintain order: map each requested ID to its result
                 const orderedResults = chunk.map(requestedId => {
-                    // Try to find matching result by ID or href
-                    const match = chunkResults.find(result =>
+                    const match = (data.content || []).find(result =>
                         result && (
                             result.id === requestedId ||
                             (result.href && result.href.includes(requestedId))
                         )
                     );
-                    return match || null; // null for not found
+                    return match ? new AudioFeatures(match) : null;
                 });
 
                 allResults.push(...orderedResults);
 
             } catch (error) {
-                console.error(`Batch chunk error for IDs ${chunk.join(',')}:`, error);
-                // Add nulls for failed chunk
+                console.error(`Chunk error for IDs ${chunk.join(',')}:`, error);
+                // Add nulls for failed chunk to maintain array length
                 allResults.push(...new Array(chunk.length).fill(null));
             }
         }

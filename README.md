@@ -1,23 +1,8 @@
-## ⚠️ **IMPORTANT NOTICE - Spotify API Limitation**
-
-> **🚨 NEW APP CREATION TEMPORARILY DISABLED**
-> 
-> **Spotify has temporarily disabled the creation of new apps in their Developer Dashboard.** If you don't already have a Spotify Developer App set up, you won't be able to use this addon right now.
-> 
-> **Before installing this addon, please check:**
-> - Do you already have Spotify API credentials (Client ID & Secret)?
-> - If NO: **Wait** until Spotify re-enables new app creation
-> - If YES: You can proceed with the installation
-> 
-> **Status Updates:** Check the [Spotify Community Discussion](https://community.spotify.com/t5/Spotify-for-Developers/Unable-to-create-app/td-p/7283365) for the latest information about when new app creation will be restored.
-> 
-> I apologize for this inconvenience - this is a temporary limitation from Spotify's side and beyond me control.
-
 # MM Audio Features
 
 ![MM Audio Features Icon](MMAudioFeatures/images/icon.svg)
 
-This MediaMonkey addon enhances your music collection by automatically fetching and storing detailed audio features for your tracks. Using Spotify's comprehensive music database for track identification and ReccoBeats' audio feature database, this addon enriches your metadata with professional audio characteristics.
+This MediaMonkey addon enhances your music collection by automatically fetching and storing detailed audio features for your tracks. Using ReccoBeats' audio feature database with optional Spotify integration for enhanced track matching, this addon enriches your metadata with professional audio characteristics.
 
 ![Version](https://img.shields.io/badge/dynamic/json?color=blue&label=version&query=version&url=https%3A//raw.githubusercontent.com/DrHardReset/MMAudioFeatures/main/MMAudioFeatures/info.json)
 ![MediaMonkey](https://img.shields.io/badge/MediaMonkey-5.x-green)
@@ -35,10 +20,11 @@ This MediaMonkey addon enhances your music collection by automatically fetching 
 - **Instrumentalness**: Likelihood that a track contains no vocals (0-100%)
 
 ### 🔧 Smart Integration
-- **Automatic Spotify Search**: Finds tracks using artist, title, and album information for accurate identification
-- **ReccoBeats Audio Features**: Retrieves pre-analyzed audio features from ReccoBeats database
-- **Two-Step Process**: Uses Spotify's superior search to identify tracks, then fetches audio features from ReccoBeats
-- **Flexible Configuration**: Choose which audio features to save
+- **ReccoBeats Search**: Works out-of-the-box without credentials, but requires **precise track metadata** - Artist, Title, and Album must match official release information exactly for successful track identification
+- **Optional Spotify Search**: *Recommended for better accuracy* - Enhanced track matching using Spotify's comprehensive database with fuzzy search capabilities
+- **Dual Search Options**: Choose between ReccoBeats (no setup, strict matching) or Spotify (better results, intelligent matching) for track identification
+- **ReccoBeats Audio Features**: All audio features are retrieved from ReccoBeats' pre-analyzed database
+- **Flexible Configuration**: Choose which audio features to save and which search method to use
 - **Custom Field Mapping**: Maps audio features to MediaMonkey's custom fields
 - **Batch Processing**: Process multiple tracks simultaneously
 - **Error Handling**: Graceful handling of tracks not found in databases
@@ -47,6 +33,7 @@ This MediaMonkey addon enhances your music collection by automatically fetching 
 - **Intuitive Search Dialog**: User-friendly interface with real-time progress
 - **Detailed Results View**: Preview all audio features before saving
 - **Configurable Output**: Enable/disable specific audio features
+- **Search Method Selection**: Choose between ReccoBeats and Spotify search
 - **Keyboard Shortcut**: Quick access via `Ctrl+Shift+A`
 - **Context Menu Integration**: Available in the "Edit Tags" menu
 
@@ -54,35 +41,51 @@ This MediaMonkey addon enhances your music collection by automatically fetching 
 
 ### Prerequisites
 - MediaMonkey 5.x
-- Spotify Developer Account (for API credentials)
 - Active internet connection
+- *Optional*: Spotify Developer Account (for enhanced performance & search accuracy)
 
 ### Setup Steps
 
-1. **Get Spotify API Credentials**
+1. **Install the Addon**
+   - Download the latest `.mmip` file from [releases](https://github.com/DrHardReset/MMAudioFeatures/releases/latest)
+   - Double-click to install in MediaMonkey
+
+2. **Basic Configuration**
+   - Go to **Tools > Options > General > Add-ons**
+   - Find "MM Audio Features" and click **Configure**
+   - Select "ReccoBeats Search" for immediate use
+   - Select which audio features to save
+
+3. **Optional: Enhanced Spotify Search Setup**
+   - ⚠️ As of January 2026, Spotify "temporarily" disabled creation of new apps, see [Spotify community discussion](https://community.spotify.com/t5/Spotify-for-Developers/Unable-to-create-app/td-p/7283365)
    - Visit [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)
    - Create a new app
    - Use any **App name** and **App description** of your choice
    - Set **Redirect URL** to `https://developer.spotify.com` (or any valid URL)
    - Select checkbox to use `Web API`
    - Note your `Client ID` and `Client Secret`
-
-2. **Install the Addon**
-   - Download the latest `.mmip` file from [releases](https://github.com/DrHardReset/MMAudioFeatures/releases/latest)
-   - Double-click to install in MediaMonkey
-
-3. **Configure the Addon**
-   - Go to **Tools > Options > General > Add-ons**
-   - Find "MM Audio Features" and click **Configure**
-   - Enter your Spotify credentials
-   - Select which audio features to save
+   - In addon configuration, select "Spotify Search" and enter your credentials
 
 ## 📖 Usage
 
+### Search Methods
+The addon offers two search methods for track identification:
+
+**ReccoBeats Search** (Default)
+- ✅ Works immediately without setup
+- ✅ No API credentials required
+- ❗ slow and quite limited track matching results
+
+**Spotify Search** (*Recommended*)
+- ⭐ Enhanced accuracy and performance
+- ⭐ Superior track matching capabilities
+- ⚙️ Requires free Spotify Developer account
+- ⚙️ API credentials setup needed
+
 ### How It Works
-1. **Track Identification**: The addon searches Spotify's database using your track's artist, title, and album information
-2. **Feature Retrieval**: Once a match is found, it retrieves the corresponding audio features from ReccoBeats database
-3. **Data Mapping**: Audio features are then stored in your MediaMonkey database according to your configuration
+1. **Track Identification**: The addon searches for tracks using your selected method (ReccoBeats or Spotify)
+2. **Feature Retrieval**: Audio features are retrieved from ReccoBeats' comprehensive database
+3. **Data Mapping**: Audio features are stored in your MediaMonkey database according to your configuration
 
 ### Basic Usage
 1. Select tracks in your MediaMonkey library
@@ -91,15 +94,19 @@ This MediaMonkey addon enhances your music collection by automatically fetching 
 4. Review the found audio features in the dialog
 5. Click **Save** to apply the changes to your tracks
 
-![Audio Features Search Results](MMAudioFeatures/images/screenshot.png)
-*The search results dialog showing audio features, album covers, and summary information for selected tracks*
+![ReccoBeats Search Results](MMAudioFeatures/images/screenshot_search_reccobeats.png)
+*ReccoBeats search: Track matching with audio features and direct API access*
+
+![Spotify Search Results](MMAudioFeatures/images/screenshot_search_spotify.png)
+*Spotify search: Enhanced track matching with album covers, track details and ReccoBeats audio features*
 
 ### Configuration Options
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| **Spotify Client ID** | Your Spotify app client ID | *Required* |
-| **Spotify Client Secret** | Your Spotify app secret | *Required* |
+| **Search Method** | ReccoBeats or Spotify search | ReccoBeats |
+| **Spotify Client ID** | Your Spotify app client ID | *Optional* |
+| **Spotify Client Secret** | Your Spotify app secret | *Optional* |
 | **Save BPM** | Store tempo as BPM field | ✅ Enabled |
 | **Save Initial Key** | Store musical key | ✅ Enabled |
 | **Save Danceability** | Store as Custom1 field | ✅ Enabled |
@@ -136,14 +143,14 @@ AudioFeatures:\
 ### API Usage & Terms of Service
 This addon uses third-party APIs to retrieve audio feature data:
 
-- **Spotify Web API**: Used for track identification and search functionality
-  - Users must obtain their own Spotify Developer credentials
+- **ReccoBeats API**: Primary service for audio features and track search
+  - No registration required for basic functionality
+  - Audio features are retrieved according to ReccoBeats' usage policies
+
+- **Spotify Web API**: Optional enhanced track identification
+  - Users may obtain their own Spotify Developer credentials for improved accuracy
   - All Spotify API usage is subject to [Spotify's Terms of Service](https://developer.spotify.com/terms/)
   - Rate limiting and usage policies apply as defined by Spotify
-
-- **ReccoBeats API**: Used to retrieve pre-analyzed audio features
-  - Service provided by ReccoBeats under their terms and conditions
-  - Audio features are retrieved according to ReccoBeats' usage policies
 
 ### Intellectual Property Notice
 - **Spotify® is a registered trademark** of Spotify AB
@@ -167,7 +174,7 @@ This software is provided "AS IS" without warranty of any kind. The author assum
 
 **Users are responsible for:**
 - Complying with all applicable terms of service for third-party APIs
-- Obtaining proper API credentials and permissions
+- Obtaining proper API credentials and permissions (if using Spotify search)
 - Using the addon in accordance with applicable laws and regulations
 
 ## 🏗️ Development
@@ -199,8 +206,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **Spotify** for their comprehensive Web API and superior search capabilities
-- **ReccoBeats** for providing pre-analyzed audio feature databases
+- **ReccoBeats** for providing comprehensive audio feature databases and track search capabilities
+- **Spotify** for their Web API that enables enhanced track matching accuracy
 - **MediaMonkey** community for support and feedback
 
 ---

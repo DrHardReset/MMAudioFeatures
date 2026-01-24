@@ -2,6 +2,7 @@ window.configInfo = {
     load: function (pnlDiv, addon) {
         // Load config with defaults - all ID3 tag options enabled by default
         this.config = app.getValue('MMAudioFeatures_config', {
+            useSpotifySearch: false,  // Standard: ReccoBeats search
             spotifyClient: '',
             spotifySecret: '',
             // ID3 tag options
@@ -21,6 +22,13 @@ window.configInfo = {
         UI.txtSpotifyClient.controlClass.value = this.config.spotifyClient;
         UI.txtSpotifySecret.controlClass.value = this.config.spotifySecret;
 
+        // Set radio button states based on useSpotifySearch
+        if (this.config.useSpotifySearch) {
+            UI.rbSpotifySearch.controlClass.checked = true;
+        } else {
+            UI.rbReccoBeats.controlClass.checked = true;
+        }
+
         // Set checkbox states
         UI.chkSaveBPM.controlClass.checked = this.config.saveBPM;
         UI.chkSaveInitialKey.controlClass.checked = this.config.saveInitialKey;
@@ -34,11 +42,14 @@ window.configInfo = {
         // Store UI reference for event handlers
         this.UI = UI;
 
-        // Setup event handlers for custom field checkboxes
+        // Setup event handlers
         this.setupCustomFieldHandlers();
+        this.setupSearchMethodHandlers();
+        this.setupSpotifyHelpLink();
 
-        // Initial update of comment checkbox state
+        // Initial updates
         this.updateCommentCheckbox();
+        this.updateSpotifyCredentialsState();
     },
 
     setupCustomFieldHandlers: function () {
@@ -62,6 +73,36 @@ window.configInfo = {
         });
     },
 
+    setupSearchMethodHandlers: function () {
+        var self = this;
+
+        // Add event listeners for radio buttons
+        if (this.UI.rbReccoBeats && this.UI.rbReccoBeats.controlClass) {
+            localListen(this.UI.rbReccoBeats, 'click', function () {
+                console.log('ReccoBeats radio selected');
+                self.updateSpotifyCredentialsState();
+            });
+        }
+
+        if (this.UI.rbSpotifySearch && this.UI.rbSpotifySearch.controlClass) {
+            localListen(this.UI.rbSpotifySearch, 'click', function () {
+                console.log('Spotify radio selected');
+                self.updateSpotifyCredentialsState();
+            });
+        }
+    },
+
+    setupSpotifyHelpLink: function () {
+        if (!this.UI.lblSpotifyHelp) {
+            console.log('Spotify help label not found');
+            return;
+        }
+
+        window.localListen(this.UI.lblSpotifyHelp, 'click', function () {
+            window.uitools.openWeb('https://github.com/DrHardReset/MMAudioFeatures#setup-steps');
+        });
+    },
+
     updateCommentCheckbox: function () {
         if (!this.UI || !this.UI.chkSaveComment) return;
 
@@ -73,13 +114,62 @@ window.configInfo = {
             this.UI.chkSaveAcousticness.controlClass.checked ||
             this.UI.chkSaveInstrumentalness.controlClass.checked;
 
-        // Enable/disable comment checkbox based on custom fields
-        this.UI.chkSaveComment.controlClass.enabled = hasCustomFields;
-
         // If no custom fields are selected, uncheck the comment checkbox
         if (!hasCustomFields) {
             this.UI.chkSaveComment.controlClass.checked = false;
         }
+
+        // Enable/disable comment checkbox based on custom fields
+        var saveComment = this.findInputElement(this.UI.chkSaveComment);
+
+        if (saveComment) {
+            saveComment.disabled = !hasCustomFields;
+            saveComment.style.opacity = hasCustomFields ? '1' : '0.2';
+        } else {
+            console.log('Save comment input element not found');
+        }
+    },
+
+    updateSpotifyCredentialsState: function () {
+        if (!this.UI || !this.UI.rbSpotifySearch) return;
+
+        // Enable/disable Spotify credentials based on selected radio button
+        var useSpotifySearch = this.UI.rbSpotifySearch.controlClass.checked;
+
+        // Find and update Spotify Client input
+        var clientInput = this.findInputElement(this.UI.txtSpotifyClient);
+        if (clientInput) {
+            clientInput.disabled = !useSpotifySearch;
+            clientInput.style.opacity = useSpotifySearch ? '1' : '0.2';
+        } else {
+            console.log('Client input element not found');
+        }
+
+        // Find and update Spotify Secret input
+        var secretInput = this.findInputElement(this.UI.txtSpotifySecret);
+        if (secretInput) {
+            secretInput.disabled = !useSpotifySearch;
+            secretInput.style.opacity = useSpotifySearch ? '1' : '0.2';
+        } else {
+            console.log('Secret input element not found');
+        }
+    },
+
+    findInputElement: function (uiElement) {
+        if (!uiElement) {
+            console.log('uiElement is null');
+            return null;
+        }
+
+        if (uiElement.querySelector) {
+            var input = uiElement.querySelector('input');
+
+            if (input) {
+                return input;
+            }
+        }
+
+        return null;
     },
 
     save: function (pnlDiv, addon) {
@@ -88,6 +178,9 @@ window.configInfo = {
 
         this.config.spotifyClient = UI.txtSpotifyClient.controlClass.value;
         this.config.spotifySecret = UI.txtSpotifySecret.controlClass.value;
+
+        // Save radio button state as boolean
+        this.config.useSpotifySearch = UI.rbSpotifySearch.controlClass.checked;
 
         // Save checkbox states
         this.config.saveBPM = UI.chkSaveBPM.controlClass.checked;

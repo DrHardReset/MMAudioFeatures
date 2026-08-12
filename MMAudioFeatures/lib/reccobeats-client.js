@@ -157,6 +157,72 @@ class ReccoBeatsClient {
     }
 
     /**
+     * Normalizes a track title for fuzzy comparison.
+     *
+     * ONLY strips featured artist annotations (feat./ft./featuring) because these
+     * are purely credits and do not affect the audio characteristics of the track.
+     *
+     * Intentionally does NOT strip: Remix, Extended Mix, Radio Edit, Original Mix,
+     * Instrumental, Remaster, Live etc. - these represent genuinely different
+     * versions with potentially different audio features (BPM, energy, structure).
+     *
+     * @param {string} title - The track title to normalize
+     * @returns {string} Normalized title (lowercase, trimmed, feat. stripped)
+     */
+    _normalizeTrackTitle(title) {
+        if (!title) return '';
+
+        let normalized = title
+            // Normalize unicode apostrophes to ASCII
+            .replace(/[\u2018\u2019\u02BC]/g, "'")
+            .replace(/[\u201C\u201D]/g, '"')
+            // Normalize unicode dashes to ASCII hyphen
+            .replace(/[\u2013\u2014]/g, '-');
+
+        // ONLY strip featured artist annotations - these are credits, not version info
+        // Handles: (feat. X), (ft. X), (featuring X), [feat. X], - feat. X
+        normalized = normalized
+            .replace(/\s*[\(\[]\s*fe?a?t(?:uring)?\.?\s+[^\)\]]+[\)\]]/gi, '')
+            .replace(/\s+-\s+fe?a?t(?:uring)?\.?\s+.+$/gi, '');
+
+        return normalized.toLowerCase().trim().replace(/\s+/g, ' ');
+    }
+
+    /**
+     * Checks if two track titles match using a multi-pass strategy:
+     * 1. Exact (case-insensitive) match
+     * 2. Normalized match (both titles stripped of common suffixes)
+     * 3. One-sided normalized match (DB title normalized vs raw search title, or vice versa)
+     *
+     * @param {string} dbTitle - Track title from the ReccoBeats database
+     * @param {string} searchTitle - Track title from the user's library
+     * @returns {boolean} True if the titles are considered a match
+     */
+    _matchTrackTitles(dbTitle, searchTitle) {
+        if (!dbTitle || !searchTitle) return false;
+
+        // Pass 1: Exact case-insensitive match (original behavior)
+        const db = this._normalizeForComparison(dbTitle);
+        const search = this._normalizeForComparison(searchTitle);
+        if (db === search) return true;
+
+        // Pass 2: Both sides normalized (strips feat., remixes, etc.)
+        const dbNorm = this._normalizeTrackTitle(dbTitle);
+        const searchNorm = this._normalizeTrackTitle(searchTitle);
+        if (dbNorm === searchNorm) return true;
+
+        // Pass 3: Normalized DB title vs raw search title
+        // (useful if DB has "6's to 9's", search has "6's to 9's")
+        if (dbNorm === search) return true;
+
+        // Pass 4: Raw DB title vs normalized search title
+        // (useful if DB has suffix, user query doesn't)
+        if (db === searchNorm) return true;
+
+        return false;
+    }
+
+    /**
      * Helper function to extract the first artist from a semicolon-separated list.
      * MediaMonkey often stores multiple artists as "Artist 1; Artist 2; Artist 3"
      * but ReccoBeats searches work better with single artist names.
@@ -356,7 +422,7 @@ class ReccoBeatsClient {
                 }
 
                 const foundTrack = trackData.content.find(t =>
-                    this._matchStrings(t.trackTitle, track, true)
+                    this._matchTrackTitles(t.trackTitle, track)
                 );
 
                 if (foundTrack) {
@@ -430,7 +496,7 @@ class ReccoBeatsClient {
                         }
 
                         const foundTrack = trackData.content.find(t =>
-                            this._matchStrings(t.trackTitle, track, true)
+                            this._matchTrackTitles(t.trackTitle, track)
                         );
 
                         if (foundTrack) {

@@ -149,6 +149,24 @@ describe('ReccoBeats API Integration Test', () => {
         }
     }, 30000);
 
+    test("searchArtistAlbumTrack finds \"6's to 9's\" by \"Big Wild\" (feat. suffix in library title)", async () => {
+        const artistName = 'Big Wild';
+        const albumName = 'Superdream';
+        const libraryTitle = "6's to 9's (feat. Rationale)"; // Like stored in library
+        const expectedDbTitle = "6's to 9's";                // Like stored in ReccoBeats DB
+        const expectedReccoBeatsTrackId = 'd5bbfc71-2bc9-4f14-b00f-5e8d5d754e82';
+        const expectedSpotifyTrackHref = 'https://open.spotify.com/track/4DAaQ5InUO23d8yNRbB0Yj';
+
+        const result = await reccoBeatsClient.searchArtistAlbumTrack(artistName, albumName, libraryTitle);
+
+        expect(result).not.toBeNull();
+        // The DB title is returned, not the library title
+        expect(result.trackTitle).toBe(expectedDbTitle);
+        expect(result.id).toBe(expectedReccoBeatsTrackId);
+        expect(result.href).toBe(expectedSpotifyTrackHref);
+        console.log(`✅ Fuzzy match: "${libraryTitle}" → DB: "${result.trackTitle}"`);
+    }, 30000);
+
     describe('getAudioFeaturesByReccoOrSpotifyIds - Array-based Tests', () => {
 
         test('should throw error for non-array input', async () => {

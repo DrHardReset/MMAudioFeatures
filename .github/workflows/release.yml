@@ -10,7 +10,7 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  NODE_VERSION: '18'
+  NODE_VERSION: '24'
   BUILD_CONFIGURATION: Release
 
 jobs:

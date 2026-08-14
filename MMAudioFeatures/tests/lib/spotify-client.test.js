@@ -188,7 +188,7 @@ describe('SpotifyClient', () => {
             const result = await spotifyClient.searchTracks('Test Artist', 'Test Track');
 
             expect(global.fetch).toHaveBeenCalledWith(
-                'https://api.spotify.com/v1/search?q=artist%3ATest%20Artist%20track%3ATest%20Track&type=track&limit=20&market=DE',
+                'https://api.spotify.com/v1/search?q=artist%3A%22Test%20Artist%22%20track%3A%22Test%20Track%22&type=track&limit=10&market=DE',
                 {
                     headers: {
                         'Authorization': 'Bearer test-access-token'
@@ -213,7 +213,7 @@ describe('SpotifyClient', () => {
                 tracks: {
                     items: [],
                     href: 'test-href',
-                    limit: 20,
+                    limit: 10,
                     next: null,
                     offset: 0,
                     previous: null,
@@ -229,7 +229,7 @@ describe('SpotifyClient', () => {
             const result = await spotifyClient.searchTracks('Artist', 'Track', 'Test Album');
 
             expect(global.fetch).toHaveBeenCalledWith(
-                'https://api.spotify.com/v1/search?q=artist%3AArtist%20track%3ATrack%20album%3ATest%20Album&type=track&limit=20&market=DE',
+                'https://api.spotify.com/v1/search?q=artist%3A%22Artist%22%20track%3A%22Track%22%20album%3A%22Test%20Album%22&type=track&limit=10&market=DE',
                 {
                     headers: {
                         'Authorization': 'Bearer test-access-token'
@@ -245,7 +245,7 @@ describe('SpotifyClient', () => {
                 tracks: {
                     items: [],
                     href: 'test-href',
-                    limit: 20,
+                    limit: 10,
                     next: null,
                     offset: 0,
                     previous: null,
@@ -261,7 +261,7 @@ describe('SpotifyClient', () => {
             const result = await spotifyClient.searchTracks('Test Artist', '');
 
             expect(global.fetch).toHaveBeenCalledWith(
-                'https://api.spotify.com/v1/search?q=artist%3ATest%20Artist&type=track&limit=20&market=DE',
+                'https://api.spotify.com/v1/search?q=artist%3A%22Test%20Artist%22&type=track&limit=10&market=DE',
                 {
                     headers: {
                         'Authorization': 'Bearer test-access-token'
@@ -277,7 +277,7 @@ describe('SpotifyClient', () => {
                 tracks: {
                     items: [],
                     href: 'test-href',
-                    limit: 20,
+                    limit: 10,
                     next: null,
                     offset: 0,
                     previous: null,
@@ -293,7 +293,7 @@ describe('SpotifyClient', () => {
             const result = await spotifyClient.searchTracks('', 'Test Track');
 
             expect(global.fetch).toHaveBeenCalledWith(
-                'https://api.spotify.com/v1/search?q=track%3ATest%20Track&type=track&limit=20&market=DE',
+                'https://api.spotify.com/v1/search?q=track%3A%22Test%20Track%22&type=track&limit=10&market=DE',
                 {
                     headers: {
                         'Authorization': 'Bearer test-access-token'
@@ -338,7 +338,7 @@ describe('SpotifyClient', () => {
             const result = await spotifyClient.searchTracks('Artist', 'Track', null, { limit: 10, market: 'US' });
 
             expect(global.fetch).toHaveBeenCalledWith(
-                'https://api.spotify.com/v1/search?q=artist%3AArtist%20track%3ATrack&type=track&limit=10&market=US',
+                'https://api.spotify.com/v1/search?q=artist%3A%22Artist%22%20track%3A%22Track%22&type=track&limit=10&market=US',
                 {
                     headers: {
                         'Authorization': 'Bearer test-access-token'

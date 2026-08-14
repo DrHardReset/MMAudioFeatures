@@ -123,14 +123,104 @@ async function processTracksInDialog() {
         // Show loading animation immediately
         showLoadingAnimation();
 
-        const processedTracks = [];
+        // Preallocate so array indices always match originalTracks indices,
+        // regardless of which search path (ISRC batch / ISRC single / fallback) fills them in.
+        const processedTracks = new Array(originalTracks.length).fill(null);
         const trackIds = [];
         const trackIndices = [];
 
         reccoBeatsClient.clearCache();
 
-        // Perform track searches based on selected method
-        for (let i = 0; i < originalTracks.length; i++) {
+        // Split tracks into ISRC-based and fallback (Artist/Album/Track-Name) groups
+        const isrcTrackIndices = [];
+        const fallbackTrackIndices = [];
+
+        originalTracks.forEach((track, i) => {
+            if (track.isrc) {
+                isrcTrackIndices.push(i);
+            } else {
+                fallbackTrackIndices.push(i);
+            }
+        });
+
+        // --- ISRC-based search ---
+        if (isrcTrackIndices.length > 0) {
+            if (USE_SPOTIFY_SEARCH && spotifyClient) {
+                // Spotify's search API only supports a single ISRC per request,
+                // so each track needs its own request.
+                for (const trackIndex of isrcTrackIndices) {
+                    const track = originalTracks[trackIndex];
+
+                    if (UI.statusBar) {
+                        UI.statusBar.innerHTML = `Searching track ${trackIndex + 1} of ${originalTracks.length} by ISRC (Spotify): ${track.isrc}`;
+                    }
+
+                    const trackResult = {
+                        originalTrack: track,
+                        foundTrack: null,
+                        searchMethod: SEARCH_METHOD,
+                        audioFeatures: null,
+                        error: null
+                    };
+
+                    try {
+                        const searchResponse = await spotifyClient.searchTrackByIsrc(track.isrc);
+                        const firstTrack = searchResponse.tracks.items[0];
+
+                        if (firstTrack) {
+                            trackResult.foundTrack = firstTrack;
+                            trackIds.push(firstTrack.id);
+                            trackIndices.push(trackIndex);
+                        } else {
+                            trackResult.error = 'No Spotify track found for ISRC';
+                        }
+                    } catch (searchError) {
+                        trackResult.error = `Spotify ISRC search failed: ${searchError.message}`;
+                    }
+
+                    processedTracks[trackIndex] = trackResult;
+                }
+            } else {
+                // ReccoBeats supports batching up to 40 ISRCs per request - much more
+                // efficient than searching one by one.
+                if (UI.statusBar) {
+                    UI.statusBar.innerHTML = `Searching ${isrcTrackIndices.length} track${isrcTrackIndices.length !== 1 ? 's' : ''} by ISRC (ReccoBeats)...`;
+                }
+
+                const isrcs = isrcTrackIndices.map(trackIndex => originalTracks[trackIndex].isrc);
+                let foundTracksByIsrc;
+
+                try {
+                    foundTracksByIsrc = await reccoBeatsClient.searchTracksByIsrcs(isrcs);
+                } catch (error) {
+                    console.error('Batch ISRC search failed:', error);
+                    foundTracksByIsrc = new Array(isrcs.length).fill(null);
+                }
+
+                isrcTrackIndices.forEach((trackIndex, idx) => {
+                    const track = originalTracks[trackIndex];
+                    const foundTrack = foundTracksByIsrc[idx];
+
+                    const trackResult = {
+                        originalTrack: track,
+                        foundTrack: foundTrack || null,
+                        searchMethod: SEARCH_METHOD,
+                        audioFeatures: null,
+                        error: foundTrack ? null : 'No ReccoBeats track found for ISRC'
+                    };
+
+                    if (foundTrack) {
+                        trackIds.push(foundTrack.id);
+                        trackIndices.push(trackIndex);
+                    }
+
+                    processedTracks[trackIndex] = trackResult;
+                });
+            }
+        }
+
+        // --- Fallback search: Artist/Album/Track-Name ---
+        for (const i of fallbackTrackIndices) {
             const track = originalTracks[i];
 
             if (UI.statusBar) {
@@ -138,114 +228,67 @@ async function processTracksInDialog() {
                 UI.statusBar.innerHTML = `Searching track ${i + 1} of ${originalTracks.length} (${searchMethodDisplay}): ${track.artist} - ${track.title}`;
             }
 
+            const trackResult = {
+                originalTrack: track,
+                foundTrack: null,
+                searchMethod: SEARCH_METHOD,
+                audioFeatures: null,
+                error: null
+            };
+
             try {
-                let trackResult = {
-                    originalTrack: track,
-                    foundTrack: null,
-                    searchMethod: SEARCH_METHOD,
-                    audioFeatures: null,
-                    error: null
-                };
+                // Determine if we should use album in search
+                // Only use album if albumArtist is set and if first album artist matches first track artist (not a sampler)
+                let useAlbum = false;
+                if (track.album && track.albumArtist && track.artist) {
+                    // Get first artist from both (handle semicolon-separated lists)
+                    const firstTrackArtist = track.artist.split(';')[0].trim();
+                    const firstAlbumArtist = track.albumArtist.split(';')[0].trim();
 
-                if (track.isrc) {
-                    // ISRC is available - use it for a precise, unambiguous lookup.
-                    // The ISRC search is always performed via ReccoBeats or Spotify, depending on the currently selected search method.
-                    if (UI.statusBar) {
-                        const searchMethodDisplay = SEARCH_METHOD === 'spotify' ? 'Spotify' : 'ReccoBeats';
-                        UI.statusBar.innerHTML = `Searching track ${i + 1} of ${originalTracks.length} by ISRC (${searchMethodDisplay}): ${track.isrc}`;
-                    }
+                    // Use album only if artists match (not a sampler/compilation)
+                    useAlbum = firstTrackArtist === firstAlbumArtist;
 
-                    if (USE_SPOTIFY_SEARCH && spotifyClient) {
-                        try {
-                            const searchResponse = await spotifyClient.searchTrackByIsrc(track.isrc);
-                            const firstTrack = searchResponse.tracks.items[0];
-
-                            if (firstTrack) {
-                                trackResult.foundTrack = firstTrack;
-                                trackIds.push(firstTrack.id);
-                                trackIndices.push(i);
-                            } else {
-                                trackResult.error = 'No Spotify track found for ISRC';
-                            }
-                        } catch (searchError) {
-                            trackResult.error = `Spotify ISRC search failed: ${searchError.message}`;
-                        }
-                    } else {
-                        try {
-                            const foundTrack = await reccoBeatsClient.searchTrackByIsrc(track.isrc);
-                            if (foundTrack) {
-                                trackResult.foundTrack = foundTrack;
-                                trackIds.push(foundTrack.id);
-                                trackIndices.push(i);
-                            } else {
-                                trackResult.error = 'No ReccoBeats track found for ISRC';
-                            }
-                        } catch (searchError) {
-                            trackResult.error = `ReccoBeats ISRC search failed: ${searchError.message}`;
-                        }
-                    }
-                } else {
-                    // No ISRC available - fall back to Artist/Album/Track-Name search
-                    // Determine if we should use album in search
-                    // Only use album if albumArtist is set and if first album artist matches first track artist (not a sampler)
-                    let useAlbum = false;
-                    if (track.album && track.albumArtist && track.artist) {
-                        // Get first artist from both (handle semicolon-separated lists)
-                        const firstTrackArtist = track.artist.split(';')[0].trim();
-                        const firstAlbumArtist = track.albumArtist.split(';')[0].trim();
-
-                        // Use album only if artists match (not a sampler/compilation)
-                        useAlbum = firstTrackArtist === firstAlbumArtist;
-
-                        if (!useAlbum) {
-                            console.log(`Skipping album for track "${track.title}" - detected sampler (Artist: "${firstTrackArtist}" vs AlbumArtist: "${firstAlbumArtist}")`);
-                        }
-                    }
-
-                    const albumForSearch = useAlbum ? track.album : null;
-
-                    if (USE_SPOTIFY_SEARCH && spotifyClient) {
-                        // Spotify search with optional album
-                        const searchResponse = await spotifyClient.searchTracks(track.artist, track.title, albumForSearch);
-                        const firstTrack = searchResponse.tracks.items[0];
-
-                        if (firstTrack) {
-                            trackResult.foundTrack = firstTrack;
-                            trackIds.push(firstTrack.id);
-                            trackIndices.push(i);
-                        } else {
-                            trackResult.error = 'No Spotify track found';
-                        }
-                    } else {
-                        // ReccoBeats search with optional album
-                        try {
-                            const foundTrack = await reccoBeatsClient.searchTracks(track.artist, track.title, albumForSearch);
-                            if (foundTrack) {
-                                trackResult.foundTrack = foundTrack;
-                                trackIds.push(foundTrack.id);
-                                trackIndices.push(i);
-                            } else {
-                                trackResult.error = 'No ReccoBeats track found';
-                            }
-                        } catch (searchError) {
-                            trackResult.error = `ReccoBeats search failed: ${searchError.message}`;
-                        }
+                    if (!useAlbum) {
+                        console.log(`Skipping album for track "${track.title}" - detected sampler (Artist: "${firstTrackArtist}" vs AlbumArtist: "${firstAlbumArtist}")`);
                     }
                 }
 
-                processedTracks.push(trackResult);
+                const albumForSearch = useAlbum ? track.album : null;
+
+                if (USE_SPOTIFY_SEARCH && spotifyClient) {
+                    // Spotify search with optional album
+                    const searchResponse = await spotifyClient.searchTracks(track.artist, track.title, albumForSearch);
+                    const firstTrack = searchResponse.tracks.items[0];
+
+                    if (firstTrack) {
+                        trackResult.foundTrack = firstTrack;
+                        trackIds.push(firstTrack.id);
+                        trackIndices.push(i);
+                    } else {
+                        trackResult.error = 'No Spotify track found';
+                    }
+                } else {
+                    // ReccoBeats search with optional album
+                    try {
+                        const foundTrack = await reccoBeatsClient.searchTracks(track.artist, track.title, albumForSearch);
+                        if (foundTrack) {
+                            trackResult.foundTrack = foundTrack;
+                            trackIds.push(foundTrack.id);
+                            trackIndices.push(i);
+                        } else {
+                            trackResult.error = 'No ReccoBeats track found';
+                        }
+                    } catch (searchError) {
+                        trackResult.error = `ReccoBeats search failed: ${searchError.message}`;
+                    }
+                }
             } catch (error) {
                 console.error(`Error with track ${i + 1}:`, error);
-                processedTracks.push({
-                    originalTrack: track,
-                    foundTrack: null,
-                    searchMethod: SEARCH_METHOD,
-                    audioFeatures: null,
-                    error: error.message
-                });
+                trackResult.error = error.message;
             }
+
+            processedTracks[i] = trackResult;
         }
-                
 
         // Load audio features for found tracks
         if (trackIds.length > 0) {

@@ -167,30 +167,69 @@ describe('ReccoBeats API Integration Test', () => {
         console.log(`✅ Fuzzy match: "${libraryTitle}" → DB: "${result.trackTitle}"`);
     }, 30000);
 
-    test('searchTrackByIsrc finds "Orange Heart" by "Headhunterz" via ISRC', async () => {
-        // Reccobets API returns all album entries that a song with a specific ISRC is on. We just take the first one for this test.
-        const isrc = 'NLH2L1900062';
+    test('searchTracksByIsrcs finds multiple tracks via ISRC in a single batched request', async () => {
+        // Batch two known ISRCs plus one that does not exist in ReccoBeats,
+        // to verify order preservation and null-handling for missing entries.
+        const isrcKnown1 = 'NLH2L1900062';   // "Orange Heart" by "Headhunterz"
+        const isrcUnknown = 'ZZZZZ0000000';   // Deliberately invalid/non-existent ISRC
+        const isrcKnown2 = 'NLH2L1900062';   // Reuse same ISRC to confirm stable multi-position mapping
+
         const expectedReccoBeatsTrackId = 'eb5f88c9-107a-4839-a18e-aa068184beaa';
         const expectedSpotifyTrackHref = 'https://open.spotify.com/track/01q0kDlM3acKwnmUW65IHN';
 
         try {
-            const track = await reccoBeatsClient.searchTrackByIsrc(isrc);
+            const tracks = await reccoBeatsClient.searchTracksByIsrcs([isrcKnown1, isrcUnknown, isrcKnown2]);
 
-            expect(track).not.toBeNull();
-            expect(track.isrc).toBe(isrc);
+            expect(Array.isArray(tracks)).toBe(true);
+            expect(tracks.length).toBe(3);
 
-            expect(track.id).toBe(expectedReccoBeatsTrackId);
-            console.log(`✅ Found correct ReccoBeats track ID via ISRC '${isrc}': ${track.id}`);
+            // First known ISRC found
+            expect(tracks[0]).not.toBeNull();
+            expect(tracks[0].isrc).toBe(isrcKnown1);
+            expect(tracks[0].id).toBe(expectedReccoBeatsTrackId);
+            expect(tracks[0].href).toBe(expectedSpotifyTrackHref);
 
-            expect(track.href).toBe(expectedSpotifyTrackHref);
-            console.log(`✅ Found correct Spotify track href via ISRC '${isrc}': ${track.href}`);
+            // Unknown ISRC yields null, not an error, and does not shift subsequent results
+            expect(tracks[1]).toBeNull();
 
-            console.log('Full searchTrackByIsrc result:', track);
+            // Second occurrence of the known ISRC is also correctly resolved
+            expect(tracks[2]).not.toBeNull();
+            expect(tracks[2].isrc).toBe(isrcKnown2);
+            expect(tracks[2].id).toBe(expectedReccoBeatsTrackId);
+
+            console.log(`✅ Batch ISRC search returned ${tracks.filter(t => t).length}/3 tracks, order preserved.`);
         } catch (error) {
-            console.error('searchTrackByIsrc test error:', error.message);
+            console.error('searchTracksByIsrcs test error:', error.message);
             throw error;
         }
     }, 20000);
+
+    test('searchTracksByIsrcs returns empty array for empty input', async () => {
+        const tracks = await reccoBeatsClient.searchTracksByIsrcs([]);
+        expect(tracks).toEqual([]);
+    });
+
+    test('searchTracksByIsrcs throws for non-array input', async () => {
+        await expect(reccoBeatsClient.searchTracksByIsrcs('not-an-array')).rejects.toThrow('Array of ISRCs is required');
+    });
+
+    test('searchTracksByIsrcs chunks requests into batches of max 40 ISRCs', async () => {
+        // Build 45 ISRCs: the first is real, the rest are placeholders to force
+        // a second chunk request (40 + 5), verifying that chunking and re-assembly
+        // preserve order across chunk boundaries.
+        const isrcs = ['NLH2L1900062'];
+        for (let i = 0; i < 44; i++) {
+            isrcs.push(`FAKEISRC${String(i).padStart(4, '0')}`);
+        }
+
+        const tracks = await reccoBeatsClient.searchTracksByIsrcs(isrcs);
+
+        expect(tracks.length).toBe(45);
+        expect(tracks[0]).not.toBeNull();
+        expect(tracks[0].isrc).toBe('NLH2L1900062');
+        // All the fake ISRCs should resolve to null without breaking ordering
+        expect(tracks.slice(1).every(t => t === null)).toBe(true);
+    }, 30000);
 
     describe('getAudioFeaturesByReccoOrSpotifyIds - Array-based Tests', () => {
 

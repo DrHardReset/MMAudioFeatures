@@ -178,7 +178,7 @@ class SpotifyClient {
      * @param {string} track - Track name
      * @param {string|null} [album=null] - Optional album name
      * @param {Object} [options={}] - Search options
-     * @param {number} [options.limit=20] - Maximum number of results (1-50)
+     * @param {number} [options.limit=10] - Maximum number of results (1-10)
      * @param {string} [options.market='DE'] - Market/country code
      * @returns {Promise<SpotifySearchResponse>} Search results with structured objects
      * @throws {Error} When search fails or parameters are invalid
@@ -208,7 +208,7 @@ class SpotifyClient {
             query += ` album:${album}`;
         }
 
-        const limit = options.limit || 20;
+        const limit = options.limit || 10;
         const market = options.market || 'DE';
 
         try {

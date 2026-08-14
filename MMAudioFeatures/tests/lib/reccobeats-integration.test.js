@@ -167,6 +167,31 @@ describe('ReccoBeats API Integration Test', () => {
         console.log(`✅ Fuzzy match: "${libraryTitle}" → DB: "${result.trackTitle}"`);
     }, 30000);
 
+    test('searchTrackByIsrc finds "Orange Heart" by "Headhunterz" via ISRC', async () => {
+        // Reccobets API returns all album entries that a song with a specific ISRC is on. We just take the first one for this test.
+        const isrc = 'NLH2L1900062';
+        const expectedReccoBeatsTrackId = 'eb5f88c9-107a-4839-a18e-aa068184beaa';
+        const expectedSpotifyTrackHref = 'https://open.spotify.com/track/01q0kDlM3acKwnmUW65IHN';
+
+        try {
+            const track = await reccoBeatsClient.searchTrackByIsrc(isrc);
+
+            expect(track).not.toBeNull();
+            expect(track.isrc).toBe(isrc);
+
+            expect(track.id).toBe(expectedReccoBeatsTrackId);
+            console.log(`✅ Found correct ReccoBeats track ID via ISRC '${isrc}': ${track.id}`);
+
+            expect(track.href).toBe(expectedSpotifyTrackHref);
+            console.log(`✅ Found correct Spotify track href via ISRC '${isrc}': ${track.href}`);
+
+            console.log('Full searchTrackByIsrc result:', track);
+        } catch (error) {
+            console.error('searchTrackByIsrc test error:', error.message);
+            throw error;
+        }
+    }, 20000);
+
     describe('getAudioFeaturesByReccoOrSpotifyIds - Array-based Tests', () => {
 
         test('should throw error for non-array input', async () => {

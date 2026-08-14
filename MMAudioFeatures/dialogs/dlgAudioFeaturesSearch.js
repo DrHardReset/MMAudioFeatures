@@ -147,54 +147,93 @@ async function processTracksInDialog() {
                     error: null
                 };
 
-                // Determine if we should use album in search
-                // Only use album if albumArtist is set and if first album artist matches first track artist (not a sampler)
-                let useAlbum = false;
-                if (track.album && track.albumArtist && track.artist) {
-                    // Get first artist from both (handle semicolon-separated lists)
-                    const firstTrackArtist = track.artist.split(';')[0].trim();
-                    const firstAlbumArtist = track.albumArtist.split(';')[0].trim();
-
-                    // Use album only if artists match (not a sampler/compilation)
-                    useAlbum = firstTrackArtist === firstAlbumArtist;
-
-                    if (!useAlbum) {
-                        console.log(`Skipping album for track "${track.title}" - detected sampler (Artist: "${firstTrackArtist}" vs AlbumArtist: "${firstAlbumArtist}")`);
+                if (track.isrc) {
+                    // ISRC is available - use it for a precise, unambiguous lookup.
+                    // The ISRC search is always performed via ReccoBeats or Spotify, depending on the currently selected search method.
+                    if (UI.statusBar) {
+                        const searchMethodDisplay = SEARCH_METHOD === 'spotify' ? 'Spotify' : 'ReccoBeats';
+                        UI.statusBar.innerHTML = `Searching track ${i + 1} of ${originalTracks.length} by ISRC (${searchMethodDisplay}): ${track.isrc}`;
                     }
-                }
 
-                const albumForSearch = useAlbum ? track.album : null;
+                    if (USE_SPOTIFY_SEARCH && spotifyClient) {
+                        try {
+                            const searchResponse = await spotifyClient.searchTrackByIsrc(track.isrc);
+                            const firstTrack = searchResponse.tracks.items[0];
 
-                if (USE_SPOTIFY_SEARCH && spotifyClient) {
-                    // Spotify search with optional album
-                    const searchResponse = await spotifyClient.searchTracks(track.artist, track.title, albumForSearch);
-                    const firstTrack = searchResponse.tracks.items[0];
-
-                    if (firstTrack) {
-                        trackResult.foundTrack = firstTrack;
-                        trackIds.push(firstTrack.id);
-                        trackIndices.push(i);
+                            if (firstTrack) {
+                                trackResult.foundTrack = firstTrack;
+                                trackIds.push(firstTrack.id);
+                                trackIndices.push(i);
+                            } else {
+                                trackResult.error = 'No Spotify track found for ISRC';
+                            }
+                        } catch (searchError) {
+                            trackResult.error = `Spotify ISRC search failed: ${searchError.message}`;
+                        }
                     } else {
-                        trackResult.error = 'No Spotify track found';
+                        try {
+                            const foundTrack = await reccoBeatsClient.searchTrackByIsrc(track.isrc);
+                            if (foundTrack) {
+                                trackResult.foundTrack = foundTrack;
+                                trackIds.push(foundTrack.id);
+                                trackIndices.push(i);
+                            } else {
+                                trackResult.error = 'No ReccoBeats track found for ISRC';
+                            }
+                        } catch (searchError) {
+                            trackResult.error = `ReccoBeats ISRC search failed: ${searchError.message}`;
+                        }
                     }
                 } else {
-                    // ReccoBeats search with optional album
-                    try {
-                        const foundTrack = await reccoBeatsClient.searchTracks(track.artist, track.title, albumForSearch);
-                        if (foundTrack) {
-                            trackResult.foundTrack = foundTrack;
-                            trackIds.push(foundTrack.id);
+                    // No ISRC available - fall back to Artist/Album/Track-Name search
+                    // Determine if we should use album in search
+                    // Only use album if albumArtist is set and if first album artist matches first track artist (not a sampler)
+                    let useAlbum = false;
+                    if (track.album && track.albumArtist && track.artist) {
+                        // Get first artist from both (handle semicolon-separated lists)
+                        const firstTrackArtist = track.artist.split(';')[0].trim();
+                        const firstAlbumArtist = track.albumArtist.split(';')[0].trim();
+
+                        // Use album only if artists match (not a sampler/compilation)
+                        useAlbum = firstTrackArtist === firstAlbumArtist;
+
+                        if (!useAlbum) {
+                            console.log(`Skipping album for track "${track.title}" - detected sampler (Artist: "${firstTrackArtist}" vs AlbumArtist: "${firstAlbumArtist}")`);
+                        }
+                    }
+
+                    const albumForSearch = useAlbum ? track.album : null;
+
+                    if (USE_SPOTIFY_SEARCH && spotifyClient) {
+                        // Spotify search with optional album
+                        const searchResponse = await spotifyClient.searchTracks(track.artist, track.title, albumForSearch);
+                        const firstTrack = searchResponse.tracks.items[0];
+
+                        if (firstTrack) {
+                            trackResult.foundTrack = firstTrack;
+                            trackIds.push(firstTrack.id);
                             trackIndices.push(i);
                         } else {
-                            trackResult.error = 'No ReccoBeats track found';
+                            trackResult.error = 'No Spotify track found';
                         }
-                    } catch (searchError) {
-                        trackResult.error = `ReccoBeats search failed: ${searchError.message}`;
+                    } else {
+                        // ReccoBeats search with optional album
+                        try {
+                            const foundTrack = await reccoBeatsClient.searchTracks(track.artist, track.title, albumForSearch);
+                            if (foundTrack) {
+                                trackResult.foundTrack = foundTrack;
+                                trackIds.push(foundTrack.id);
+                                trackIndices.push(i);
+                            } else {
+                                trackResult.error = 'No ReccoBeats track found';
+                            }
+                        } catch (searchError) {
+                            trackResult.error = `ReccoBeats search failed: ${searchError.message}`;
+                        }
                     }
                 }
 
                 processedTracks.push(trackResult);
-
             } catch (error) {
                 console.error(`Error with track ${i + 1}:`, error);
                 processedTracks.push({
@@ -206,6 +245,7 @@ async function processTracksInDialog() {
                 });
             }
         }
+                
 
         // Load audio features for found tracks
         if (trackIds.length > 0) {

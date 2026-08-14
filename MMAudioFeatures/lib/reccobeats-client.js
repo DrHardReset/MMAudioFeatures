@@ -565,6 +565,33 @@ class ReccoBeatsClient {
     }
 
     /**
+     * Searches for a track by its ISRC (International Standard Recording Code).
+     * Uses the ReccoBeats `/v1/track?ids=` endpoint, which also accepts an ISRC
+     * as identifier and returns the matching track(s).
+     *
+     * @param {string} isrc - The ISRC of the track (e.g. 'NLH2L1900062')
+     * @returns {Promise<Track>} Track object
+     * @throws {Error} When ISRC is missing or no track is found
+     *
+     * @example
+     * const track = await client.searchTrackByIsrc('NLH2L1900062');
+     * console.log(track.trackTitle);
+     */
+    async searchTrackByIsrc(isrc) {
+        if (!isrc) {
+            throw new Error('ISRC is required');
+        }
+
+        const data = await this._fetchFromApi(`/v1/track?ids=${encodeURIComponent(isrc)}`);
+
+        if (!data.content || !Array.isArray(data.content) || data.content.length === 0) {
+            throw new Error(`Track with ISRC '${isrc}' not found in ReccoBeats.`);
+        }
+
+        return new Track(data.content[0]);
+    }
+
+    /**
      * Fetches audio features for multiple tracks by ReccoBeats or Spotify IDs.
      * Automatically chunks large batches into multiple requests (max 40 IDs per request).
      * Always accepts and returns arrays for consistent API.

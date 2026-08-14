@@ -134,6 +134,36 @@ class SpotifyClient {
     }
 
     /**
+     * Helper function to extract the first artist from a semicolon-separated list.
+     * MediaMonkey often stores multiple artists as "Artist 1; Artist 2; Artist 3".
+     *
+     * @param {string} artistString - The artist string, potentially with multiple artists
+     * @returns {string} The first artist name, trimmed
+     */
+    _getFirstArtist(artistString) {
+        if (!artistString) {
+            return '';
+        }
+
+        return artistString.split(';')[0].trim();
+    }
+
+    /**
+     * Sanitizes a value for use inside a quoted Spotify field-filter (e.g. artist:"...").
+     * Strips double quotes to avoid breaking out of the quoted value and prevent malformed queries.
+     *
+     * @param {string} value - The raw field value
+     * @returns {string} Sanitized value safe to embed in a quoted filter
+     */
+    _sanitizeFieldValue(value) {
+        if (!value) {
+            return '';
+        }
+
+        return value.replace(/"/g, '').trim();
+    }
+
+    /**
      * Authenticate with Spotify using Client Credentials flow.
      *
      * @returns {Promise<SpotifyAuthResponse>} Authentication response with access token
@@ -178,7 +208,7 @@ class SpotifyClient {
      * @param {string} track - Track name
      * @param {string|null} [album=null] - Optional album name
      * @param {Object} [options={}] - Search options
-     * @param {number} [options.limit=20] - Maximum number of results (1-50)
+     * @param {number} [options.limit=10] - Maximum number of results (1-10)
      * @param {string} [options.market='DE'] - Market/country code
      * @returns {Promise<SpotifySearchResponse>} Search results with structured objects
      * @throws {Error} When search fails or parameters are invalid
@@ -193,22 +223,25 @@ class SpotifyClient {
             await this.authenticate();
         }
 
+        // Use only the first artist for the search (MediaMonkey may store multiple artists separated by semicolon)
+        const firstArtist = artist ? this._getFirstArtist(artist) : '';
+
         let query = '';
-        if (artist && track) {
-            query = `artist:${artist} track:${track}`;
-        } else if (artist) {
-            query = `artist:${artist}`;
+        if (firstArtist && track) {
+            query = `artist:"${this._sanitizeFieldValue(firstArtist)}" track:"${this._sanitizeFieldValue(track)}"`;
+        } else if (firstArtist) {
+            query = `artist:"${this._sanitizeFieldValue(firstArtist)}"`;
         } else if (track) {
-            query = `track:${track}`;
+            query = `track:"${this._sanitizeFieldValue(track)}"`;
         } else {
             throw new Error('Artist or track must be specified.');
         }
 
         if (album) {
-            query += ` album:${album}`;
+            query += ` album:"${this._sanitizeFieldValue(album)}"`;
         }
 
-        const limit = options.limit || 20;
+        const limit = options.limit || 10;
         const market = options.market || 'DE';
 
         try {
@@ -229,6 +262,56 @@ class SpotifyClient {
             return new SpotifySearchResponse(data);
         } catch (error) {
             throw new Error(`Spotify search error: ${error.message}`);
+        }
+    }
+
+    /**
+     * Search for a track by its ISRC (International Standard Recording Code).
+     * Uses Spotify's search endpoint with the `isrc:` filter, which reliably
+     * finds the exact recording associated with the given ISRC.
+     *
+     * @param {string} isrc - The ISRC of the track (e.g. 'NLH2L1900062')
+     * @param {Object} [options={}] - Search options
+     * @param {number} [options.limit=1] - Maximum number of results (1-10)
+     * @param {string} [options.market='DE'] - Market/country code
+     * @returns {Promise<SpotifySearchResponse>} Search results with structured objects
+     * @throws {Error} When ISRC is missing or the search fails
+     *
+     * @example
+     * const results = await client.searchTrackByIsrc('NLH2L1900062');
+     * console.log(results.tracks.items[0].name);
+     */
+    async searchTrackByIsrc(isrc, options = {}) {
+        if (!isrc) {
+            throw new Error('ISRC is required');
+        }
+
+        if (!this.accessToken) {
+            await this.authenticate();
+        }
+
+        const query = `isrc:${isrc}`;
+        const limit = options.limit || 1;
+        const market = options.market || 'DE';
+
+        try {
+            const response = await fetch(
+                `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=${limit}&market=${market}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${this.accessToken}`
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Search failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return new SpotifySearchResponse(data);
+        } catch (error) {
+            throw new Error(`Spotify ISRC search error: ${error.message}`);
         }
     }
 

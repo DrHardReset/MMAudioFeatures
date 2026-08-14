@@ -565,6 +565,63 @@ class ReccoBeatsClient {
     }
 
     /**
+    * Searches for multiple tracks by their ISRC (International Standard Recording Code)
+    * in a single batch. Uses the ReccoBeats `/v1/track?ids=` endpoint, which accepts
+    * a comma-separated list of ISRCs, and automatically chunks large batches into
+    * multiple requests (max 40 ISRCs per request) - the same limit used for
+    * audio-feature batch lookups.
+    *
+    * Always accepts and returns arrays for a consistent API, preserving the order
+    * of the input ISRCs. Missing tracks are represented as `null`.
+    *
+    * @param {string[]} isrcs - Array of ISRC strings
+    * @returns {Promise<(Track|null)[]>} Array of Track objects (null for not found)
+    * @throws {Error} When input is not an array
+    *
+    * @example
+    * const tracks = await client.searchTracksByIsrcs(['NLH2L1900062', 'UNKNOWNISRC']);
+    * console.log(tracks[0].trackTitle); // Found track
+    * console.log(tracks[1]); // null - not found
+    */
+    async searchTracksByIsrcs(isrcs) {
+        if (!Array.isArray(isrcs)) {
+            throw new Error('Array of ISRCs is required');
+        }
+
+        if (isrcs.length === 0) {
+            return [];
+        }
+
+        const allResults = [];
+        const maxChunkSize = 40;
+
+        // Process in chunks of up to 40 ISRCs
+        for (let i = 0; i < isrcs.length; i += maxChunkSize) {
+            const chunk = isrcs.slice(i, i + maxChunkSize);
+            const idsParam = chunk.join(',');
+
+            try {
+                const data = await this._fetchFromApi(`/v1/track?ids=${encodeURIComponent(idsParam)}`);
+
+                // Maintain order: map each requested ISRC to its result
+                const orderedResults = chunk.map(requestedIsrc => {
+                    const match = (data.content || []).find(t => t && t.isrc === requestedIsrc);
+                    return match ? new Track(match) : null;
+                });
+
+                allResults.push(...orderedResults);
+
+            } catch (error) {
+                console.error(`Chunk error for ISRCs ${chunk.join(',')}:`, error);
+                // Add nulls for failed chunk to maintain array length
+                allResults.push(...new Array(chunk.length).fill(null));
+            }
+        }
+
+        return allResults;
+    }
+
+    /**
      * Fetches audio features for multiple tracks by ReccoBeats or Spotify IDs.
      * Automatically chunks large batches into multiple requests (max 40 IDs per request).
      * Always accepts and returns arrays for consistent API.

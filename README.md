@@ -57,7 +57,7 @@ This MediaMonkey addon enhances your music collection by automatically fetching 
    - Select which audio features to save
 
 3. **Optional: Enhanced Spotify Search Setup**
-   - ⚠️ As of January 2026, Spotify "temporarily" disabled creation of new apps, see [Spotify community discussion](https://community.spotify.com/t5/Spotify-for-Developers/Unable-to-create-app/td-p/7283365)
+   - if you have a Spotify premium abo, you can enable Spotify search for better track matching
    - Visit [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)
    - Create a new app
    - Use any **App name** and **App description** of your choice
@@ -83,7 +83,8 @@ The addon offers two search methods for track identification:
 - ⚙️ API credentials setup needed
 
 ### How It Works
-1. **Track Identification**: The addon searches for tracks using your selected method (ReccoBeats or Spotify)
+1. **Track Identification**: The addon searches for tracks using your selected method (ReccoBeats or Spotify)<br/>
+							 Search uses track ISRC if available, otherwise it uses Artist, Title, and Album metadata for matching
 2. **Feature Retrieval**: Audio features are retrieved from ReccoBeats' comprehensive database
 3. **Data Mapping**: Audio features are stored in your MediaMonkey database according to your configuration
 

@@ -93,6 +93,7 @@
                             title: track.title,
                             album: track.album,
                             albumArtist: track.albumArtist,
+                            isrc: track.isrc,
                             index: i
                         });
                     }

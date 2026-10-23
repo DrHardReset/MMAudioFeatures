@@ -24,15 +24,40 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Check if tag is on main/master
+      id: check_branch
+      shell: bash
+      run: |
+        TAG_SHA="${{ github.sha }}"
+        ON_MAIN="false"
+
+        for BRANCH in main master; do
+          if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
+            if git merge-base --is-ancestor "$TAG_SHA" "origin/$BRANCH"; then
+              echo "Tag $TAG_SHA is on origin/$BRANCH"
+              ON_MAIN="true"
+              break
+            fi
+          fi
+        done
+
+        echo "on_main=$ON_MAIN" >> "$GITHUB_OUTPUT"
+
+        if [ "$ON_MAIN" = "false" ]; then
+          echo "::warning::Tag ${{ github.ref_name }} is not on main/master - skipping release build."
+        fi
       
     - name: Get version from tag
       id: get_version
+      if: steps.check_branch.outputs.on_main == 'true'
       run: |
         $version = "${{ github.ref_name }}" -replace '^v', ''
         echo "version=$version" >> $env:GITHUB_OUTPUT
         echo "Version: $version"
 
     - name: Update version in info.json
+      if: steps.check_branch.outputs.on_main == 'true'
       run: |
         # Update version in info.json
         $expectedVersion = "${{ steps.get_version.outputs.version }}"
@@ -63,11 +88,13 @@ jobs:
         }
 
     - name: Setup .NET
+      if: steps.check_branch.outputs.on_main == 'true'
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         
     - name: Setup Node.js
+      if: steps.check_branch.outputs.on_main == 'true'
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
@@ -75,10 +102,12 @@ jobs:
         cache-dependency-path: MMAudioFeatures/package.json
         
     - name: Install dependencies
+      if: steps.check_branch.outputs.on_main == 'true'
       working-directory: MMAudioFeatures
       run: npm ci
       
     - name: Run tests
+      if: steps.check_branch.outputs.on_main == 'true'
       working-directory: MMAudioFeatures
       run: |
         Write-Host "Running unit tests..."
@@ -86,6 +115,7 @@ jobs:
       
     - name: Build Release
       id: build
+      if: steps.check_branch.outputs.on_main == 'true'
       working-directory: MMAudioFeatures
       run: |
         Write-Host "Building MM Audio Features addon for release..."
@@ -102,6 +132,7 @@ jobs:
         Write-Host "Created artifact: $($mmipFile.Name) ($([math]::Round($mmipFile.Length / 1KB, 2)) KB)"
 
     - name: Generate update info JSON
+      if: steps.check_branch.outputs.on_main == 'true'
       run: |
         $updateInfo = @{
             version = "${{ steps.get_version.outputs.version }}"
@@ -115,6 +146,7 @@ jobs:
         Get-Content "update.json"
 
     - name: Create Release
+      if: steps.check_branch.outputs.on_main == 'true'
       uses: softprops/action-gh-release@v2
       with:
         name: "${{ github.ref_name }}"

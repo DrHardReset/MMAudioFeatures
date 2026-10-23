@@ -223,6 +223,72 @@ class ReccoBeatsClient {
     }
 
     /**
+    * Converts a trailing parenthetical postfix in a track title to a
+    * dash-separated postfix instead, e.g.:
+    * "She's so High (Single Version)" -> "She's so High - Single Version"
+    *
+    * This is used to build an additional search-title variant since some
+    * ReccoBeats entries use the dash notation instead of parentheses for
+    * version/edition postfixes, which `_matchTrackTitles` does not bridge.
+    *
+    * If the title has no trailing parenthetical postfix, `null` is returned
+    * to indicate that no variant could be derived.
+    *
+    * @param {string} title - The track title to convert
+    * @returns {string|null} The converted title, or null if no match
+    */
+    _convertParenthesesPostfixToDash(title) {
+        if (!title) return null;
+
+        // Normalize unicode dashes first, mirroring _normalizeTrackTitle
+        const normalizedTitle = title.replace(/[\u2013\u2014]/g, '-');
+
+        const match = normalizedTitle.match(/^(.*?)\s*\(([^()]+)\)\s*$/);
+        if (!match) {
+            return null;
+        }
+
+        const [, base, postfix] = match;
+        return `${base.trim()} - ${postfix.trim()}`;
+    }
+
+    /**
+     * Builds the list of track title variants to check when searching for a
+     * track. If the title has a trailing parenthetical postfix (e.g.
+     * "Track (Single Version)"), an additional dash-separated variant is
+     * included (e.g. "Track - Single Version"), since ReccoBeats entries may
+     * use either notation.
+     *
+     * @param {string} track - The track title to build variants for
+     * @returns {string[]} Array of title variants to try (always contains at least the original title)
+     */
+    _getTrackTitleVariants(track) {
+        const variants = [track];
+
+        const dashVariant = this._convertParenthesesPostfixToDash(track);
+        if (dashVariant && dashVariant !== track) {
+            variants.push(dashVariant);
+        }
+
+        return variants;
+    }
+
+    /**
+     * Checks if a DB track title matches any of the given search title variants.
+     * Used to check a track against both the original title and derived
+     * variants (e.g. parentheses vs. dash postfix) in a single pass.
+     *
+     * @param {string} dbTitle - Track title from the ReccoBeats database
+     * @param {string[]} titleVariants - Array of search title variants to check against
+     * @returns {boolean} True if the DB title matches any of the variants
+     */
+    _matchesAnyTrackTitle(dbTitle, titleVariants) {
+        return titleVariants.some(variant => this._matchTrackTitles(dbTitle, variant));
+    }
+
+    /**
+
+    /**
      * Helper function to extract the first artist from a semicolon-separated list.
      * MediaMonkey often stores multiple artists as "Artist 1; Artist 2; Artist 3"
      * but ReccoBeats searches work better with single artist names.
@@ -409,6 +475,10 @@ class ReccoBeatsClient {
         // Find all artists with exact name match using the searchArtist function
         const matchingArtists = await this.searchArtist(firstArtist, true);
 
+        // Build title variants once (original + dash-postfix fallback, if applicable)
+        // so both are checked in a single pass per page, without re-fetching data.
+        const titleVariants = this._getTrackTitleVariants(track);
+
         // Search for the track in each matching artist
         for (const foundArtist of matchingArtists) {
             let page = 0;
@@ -422,7 +492,7 @@ class ReccoBeatsClient {
                 }
 
                 const foundTrack = trackData.content.find(t =>
-                    this._matchTrackTitles(t.trackTitle, track)
+                    this._matchesAnyTrackTitle(t.trackTitle, titleVariants)
                 );
 
                 if (foundTrack) {
@@ -478,6 +548,10 @@ class ReccoBeatsClient {
         // Use searchArtist directly - it now has caching built-in
         const matchingArtists = await this.searchArtist(firstArtist, true);
 
+        // Build title variants once (original + dash-postfix fallback, if applicable)
+        // so both are checked in a single pass per page, without re-fetching data.
+        const titleVariants = this._getTrackTitleVariants(track);
+
         for (const foundArtist of matchingArtists) {
             // Use searchArtistAlbum directly - it now has caching built-in
             try {
@@ -496,7 +570,7 @@ class ReccoBeatsClient {
                         }
 
                         const foundTrack = trackData.content.find(t =>
-                            this._matchTrackTitles(t.trackTitle, track)
+                            this._matchesAnyTrackTitle(t.trackTitle, titleVariants)
                         );
 
                         if (foundTrack) {

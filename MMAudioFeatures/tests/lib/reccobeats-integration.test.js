@@ -102,6 +102,52 @@ describe('ReccoBeats API Integration Test', () => {
         }
     }, 20000);
 
+    test('searchArtistTrack finds "She\'s So High" by "Blur" with title "She\'s so High (Single Version)"', async () => {
+        const artist = 'Blur';
+        const trackName = "She's so High (Single Version)";
+        const expectedSpotifyTrackHref = 'https://open.spotify.com/track/11inqmn7z6A6MLWpcQjhq9';
+
+        try {
+            const track = await reccoBeatsClient.searchArtistTrack(artist, trackName);
+
+            expect(track).not.toBeNull();
+            expect(track.artists).toBeDefined();
+            expect(track.artists.some(trackArtist => trackArtist.name === artist)).toBe(true);
+
+            expect(track.href).toBe(expectedSpotifyTrackHref);
+            console.log(`Found correct Spotify track href: ${track.href}`);
+
+            console.log(`✅ Found track for '${trackName}' by '${artist}': ${track.trackTitle}`);
+            console.log('Full track result:', track);
+        } catch (error) {
+            console.error('searchArtistTrack test error:', error.message);
+            throw error;
+        }
+    }, 20000);
+
+    test('searchArtistTrack finds "She\'s So High" by "Blur" with title "She\'s so High - Single Version"', async () => {
+        const artist = 'Blur';
+        const trackName = "She's so High - Single Version";
+        const expectedSpotifyTrackHref = 'https://open.spotify.com/track/11inqmn7z6A6MLWpcQjhq9';
+
+        try {
+            const track = await reccoBeatsClient.searchArtistTrack(artist, trackName);
+
+            expect(track).not.toBeNull();
+            expect(track.artists).toBeDefined();
+            expect(track.artists.some(trackArtist => trackArtist.name === artist)).toBe(true);
+
+            expect(track.href).toBe(expectedSpotifyTrackHref);
+            console.log(`Found correct Spotify track href: ${track.href}`);
+
+            console.log(`✅ Found track for '${trackName}' by '${artist}': ${track.trackTitle}`);
+            console.log('Full track result:', track);
+        } catch (error) {
+            console.error('searchArtistTrack test error:', error.message);
+            throw error;
+        }
+    }, 20000);
+
     test('searchArtistAlbumTrack finds "Orange Heart" by "Headhunterz" on album "Orange Heart"', async () => {
         const artistName = 'Headhunterz';
         const albumName = 'Orange Heart';
